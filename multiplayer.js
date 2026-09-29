@@ -17,7 +17,7 @@ export const signUp=async(u,p)=>{const c=await createUserWithEmailAndPassword(au
 export const guest=async(name)=>{const c=await signInAnonymously(auth);await updateProfile(c.user,{displayName:name})};
 export const logout=()=>signOut(auth);
 
-export async function createRoom(max){
+export async function createRoom(max,av){
   const u=me();
   for(let n=0;n<10;n++){
     const code=String(1000+Math.floor(Math.random()*9000));
@@ -25,7 +25,7 @@ export async function createRoom(max){
       await runTransaction(db,async tx=>{
         const s=await tx.get(R(code));
         if(s.exists()&&Date.now()-s.data().created<6*36e5)throw 'taken';
-        tx.set(R(code),{host:u.uid,max,status:'lobby',created:Date.now(),players:[{uid:u.uid,name:u.name}]});
+        tx.set(R(code),{host:u.uid,max,status:'lobby',created:Date.now(),players:[{uid:u.uid,name:u.name,av:av||'🙂'}]});
       });
       return code;
     }catch(e){if(e!=='taken')throw e}
@@ -33,14 +33,14 @@ export async function createRoom(max){
   throw new Error('Could not find a free code. Try again.');
 }
 
-export const joinRoom=(code)=>runTransaction(db,async tx=>{
+export const joinRoom=(code,av)=>runTransaction(db,async tx=>{
   const u=me(),s=await tx.get(R(code));
   if(!s.exists())throw new Error('No room with that code');
   const d=s.data();
   if(d.players.some(p=>p.uid==u.uid))return;
   if(d.status!='lobby')throw new Error('That game already started');
   if(d.players.length>=d.max)throw new Error('Room is full');
-  tx.update(R(code),{players:[...d.players,{uid:u.uid,name:u.name}]});
+  tx.update(R(code),{players:[...d.players,{uid:u.uid,name:u.name,av:av||'🙂'}]});
 });
 
 export const watchRoom=(code,cb)=>onSnapshot(R(code),s=>cb(s.exists()?s.data():null,s.metadata.hasPendingWrites));

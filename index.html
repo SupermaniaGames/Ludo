@@ -34,6 +34,12 @@
  <button class="btn" data-back>Back</button>
 </section>
 
+<section class="sc" id="chars" hidden>
+ <h2>Choose your character</h2>
+ <div id="avgrid"></div>
+ <button class="btn p" data-back>Done</button>
+</section>
+
 <section class="sc" id="setup" hidden>
  <h2>New game</h2>
  <div class="seg" data-k="game"><button data-v="ludo">Ludo</button><button data-v="snl">Snakes &amp; Ladders</button></div>
@@ -68,14 +74,16 @@
 
 <section class="sc" id="game" hidden>
  <div id="bar"><button class="btn" data-back>Menu</button><div id="status"></div></div>
+ <div class="crow" id="ctop"></div>
  <div id="board"></div>
- <button id="dice" disabled aria-label="Roll the dice"><div class="cube"></div></button>
+ <div class="crow" id="cbot"></div>
 </section>
 
 </main>
 
 <button id="chatbtn" hidden aria-label="Chat">💬</button>
 <div id="chat" hidden>
+ <div id="chead"><b>Chat</b><button id="cclose" aria-label="Close chat">✕</button></div>
  <div id="msgs"></div>
  <div id="cin"><input id="ct" maxlength="200" placeholder="Message"><button class="btn p" id="send">Send</button></div>
 </div>
