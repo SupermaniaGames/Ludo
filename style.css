@@ -108,3 +108,15 @@ body{background:radial-gradient(circle,#ffffff0d 5px,transparent 6px) 0 0/46px 4
 #avgrid button.on{border-color:var(--gold);background:var(--gold)}
 #chead{display:flex;justify-content:space-between;align-items:center;font-size:1.2rem}
 #cclose{width:42px;height:42px;border-radius:50%;border:3px solid var(--gold);background:#0b2f86;color:#fff;font-size:1.1rem;cursor:pointer}
+
+/* centred board, aligned cards, single dice for computer games */
+#app{display:flex;flex-direction:column;justify-content:center;min-height:calc(100dvh - 16px)}
+#game{position:relative;min-height:calc(100dvh - 24px);justify-content:center;--bw:min(100%,calc(100dvh - 350px),480px)}
+#game.solo{--bw:min(100%,calc(100dvh - 440px),480px)}
+#board,.crow{width:var(--bw)}
+#bar{position:absolute;top:0;left:0;right:0;width:auto}
+#mute{width:auto;margin-left:auto;padding:8px 12px}
+#solo{display:flex;justify-content:center}
+.dice.big{--d:64px;perspective:420px}
+.dice.big:not(:disabled){filter:drop-shadow(0 0 10px #ffd54a)}
+#game.solo .dbox{display:none}
