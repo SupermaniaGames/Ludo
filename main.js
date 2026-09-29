@@ -15,7 +15,7 @@ let g=null,ctx={},els=[];
 const show=id=>$$('.sc').forEach(s=>s.hidden=s.id!=id);
 const say=(id,m)=>$('#'+id).textContent=m||'';
 const nm=k=>g.names[k];
-const fe=e=>({'auth/email-already-in-use':'That username is taken','auth/invalid-credential':'Wrong username or password','auth/user-not-found':'Wrong username or password','auth/wrong-password':'Wrong username or password','auth/operation-not-allowed':'Turn on Email/Password sign-in in Firebase','auth/network-request-failed':'No connection'}[e.code]||e.message||String(e));
+const fe=e=>({'auth/email-already-in-use':'That username is taken','auth/invalid-credential':'Wrong username or password','auth/user-not-found':'Wrong username or password','auth/wrong-password':'Wrong username or password','auth/operation-not-allowed':'Turn on Email/Password sign-in in Firebase','auth/network-request-failed':'No connection','auth/admin-restricted-operation':'Turn on Anonymous sign-in in Firebase','permission-denied':'The database rules are blocking this. Add the ludoRooms rules in Firebase.'}[e.code]||e.message||String(e));
 
 /* ---------- 3D dice & coins ---------- */
 const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]},ROT={1:[0,0],6:[0,180],2:[0,-90],5:[0,90],3:[-90,0],4:[90,0]};
@@ -38,7 +38,14 @@ function renderMe(){
   else{b.textContent='Sign in';b.onclick=()=>show('auth')}
   m.append(b);
 }
-mp.onUser(renderMe);
+const pendingRoom=new URLSearchParams(location.search).get('room');
+if(/^\d{4}$/.test(pendingRoom||''))S.pending=pendingRoom;
+let booted=false;
+mp.onUser(u=>{
+  renderMe();
+  if(booted)return;booted=true;
+  if(S.pending){if(u)joinCode(S.pending);else{say('aerr','Sign in or play as a guest to join room '+S.pending);show('auth')}}
+});
 function leave(){
   clearTimeout(ctx.bt);ctx.unsubR&&ctx.unsubR();ctx.unsubC&&ctx.unsubC();
   ctx={};g=null;$('#chat').hidden=true;$('#chatbtn').hidden=true;
@@ -54,8 +61,13 @@ async function doAuth(create){
   const u=$('#u').value.trim(),p=$('#p').value;
   if(!/^[A-Za-z0-9_]{3,14}$/.test(u))return say('aerr','Username: 3-14 letters, numbers or _');
   if(p.length<6)return say('aerr','Password needs 6 or more characters');
-  try{create?await mp.signUp(u,p):await mp.signIn(u,p);say('aerr');renderMe();show('friends')}catch(e){say('aerr',fe(e))}
+  try{create?await mp.signUp(u,p):await mp.signIn(u,p);say('aerr');renderMe();afterAuth()}catch(e){say('aerr',fe(e))}
 }
+const afterAuth=()=>S.pending?joinCode(S.pending):show('friends');
+$('#guest').onclick=async()=>{
+  const t=$('#u').value.trim(),name=/^[A-Za-z0-9_]{3,14}$/.test(t)?t:'Guest'+(1000+Math.floor(Math.random()*9000));
+  try{await mp.guest(name);say('aerr');renderMe();afterAuth()}catch(e){say('aerr',fe(e))}
+};
 $('#signin').onclick=()=>doAuth(false);
 $('#signup').onclick=()=>doAuth(true);
 
@@ -262,17 +274,27 @@ async function watch(code){
   $('#chatbtn').hidden=false;show('lobby');
 }
 $('#create').onclick=async()=>{try{say('ferr');watch(await mp.createRoom(S.max))}catch(e){say('ferr',fe(e))}};
-$('#join').onclick=async()=>{
+async function joinCode(c){
+  try{say('ferr');await mp.joinRoom(c);S.pending=null;history.replaceState(null,'',location.pathname);watch(c)}
+  catch(e){S.pending=null;show('friends');say('ferr',fe(e))}
+}
+$('#join').onclick=()=>{
   const c=$('#code').value.trim();
   if(!/^\d{4}$/.test(c))return say('ferr','Enter the 4-digit code');
-  try{say('ferr');await mp.joinRoom(c);watch(c)}catch(e){say('ferr',fe(e))}
+  joinCode(c);
+};
+const inviteLink=()=>location.origin+location.pathname+'?room='+ctx.code;
+$('#wa').onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent('Join my Supermania Ludo game! Room code: '+ctx.code+'\n'+inviteLink()),'_blank');
+$('#copy').onclick=async()=>{
+  try{await navigator.clipboard.writeText(inviteLink());$('#link').textContent='Link copied!'}
+  catch{prompt('Copy this link',inviteLink())}
 };
 function onRoom(d,pending){
   if(!ctx.code)return;
   if(!d){alert('The room was closed.');return home()}
   ctx.room=d;
   if(d.status=='lobby'){
-    $('#rcode').textContent=ctx.code;
+    $('#rcode').textContent=ctx.code;$('#link').textContent=inviteLink();
     const ul=$('#plist');ul.innerHTML='';
     d.players.forEach((p,k)=>{const li=document.createElement('li');li.textContent=p.name;li.style.setProperty('--c',C[SEATS[Math.max(2,d.players.length)][k]||0]);ul.append(li)});
     const host=d.host==mp.me().uid;
@@ -313,3 +335,16 @@ if('serviceWorker' in navigator){
   });
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!reloaded){reloaded=true;location.reload()}});
 }
+
+/* ---------- install button ---------- */
+let installEvt=null;
+const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+const showInstall=()=>{$('#install').hidden=!!standalone||(!installEvt&&!isIOS)};
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;showInstall()});
+addEventListener('appinstalled',()=>{installEvt=null;showInstall()});
+$('#install').onclick=async()=>{
+  if(installEvt){installEvt.prompt();await installEvt.userChoice;installEvt=null;showInstall()}
+  else alert('On iPhone: tap the Share button, then Add to Home Screen.');
+};
+showInstall();
