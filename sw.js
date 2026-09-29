@@ -1,4 +1,15 @@
-const V='sm-v1',A=['./','index.html','manifest.webmanifest','logo.png','icon-192.png','icon-512.png'];
-self.addEventListener('install',e=>e.waitUntil(caches.open(V).then(c=>c.addAll(A)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!=V).map(x=>caches.delete(x)))).then(()=>clients.claim())));
-self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));
+// Network-first: always fetch the latest files from GitHub Pages.
+// The cache is only an offline fallback, never served when online.
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch',e=>{
+  const r=e.request;
+  if(r.method!=='GET'||!r.url.startsWith(self.location.origin))return;
+  e.respondWith(
+    fetch(r,{cache:'no-store'}).then(res=>{
+      const copy=res.clone();
+      caches.open('offline').then(c=>c.put(r,copy));
+      return res;
+    }).catch(()=>caches.match(r))
+  );
+});
