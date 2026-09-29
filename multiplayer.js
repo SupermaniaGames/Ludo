@@ -5,7 +5,7 @@ import cfg from './firebase-config.js';
 
 const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
 const mail=u=>u.toLowerCase()+'@supermania.games';
-const R=c=>doc(db,'rooms',c);
+const R=c=>doc(db,'ludoRooms',c);
 
 export const me=()=>auth.currentUser&&{uid:auth.currentUser.uid,name:auth.currentUser.displayName||''};
 export const onUser=cb=>onAuthStateChanged(auth,cb);
@@ -42,6 +42,6 @@ export const joinRoom=(code)=>runTransaction(db,async tx=>{
 export const watchRoom=(code,cb)=>onSnapshot(R(code),s=>cb(s.exists()?s.data():null,s.metadata.hasPendingWrites));
 export const setRoom=(code,patch)=>updateDoc(R(code),patch);
 
-const CH=code=>collection(db,'rooms',code,'chat');
+const CH=code=>collection(db,'ludoRooms',code,'chat');
 export const sendChat=(code,text)=>addDoc(CH(code),{uid:me().uid,name:me().name,text,ts:serverTimestamp()});
 export const watchChat=(code,cb)=>onSnapshot(query(CH(code),orderBy('ts'),limit(60)),s=>cb(s.docs.map(d=>d.data())));
