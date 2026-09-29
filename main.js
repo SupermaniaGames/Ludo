@@ -1,7 +1,8 @@
 let mp;
 try{mp=await import('./multiplayer.js')}catch(e){
   console.error('Firebase setup problem:',e);
-  const off=()=>{throw new Error('Online play is not set up yet. Check firebase-config.js')};
+  const why=String(e&&e.message||'').includes('Firebase config')?e.message:'Online play is not set up. Check firebase-config.js';
+  const off=()=>{throw new Error(why)};
   mp={me:()=>null,onUser(){},signIn:off,signUp:off,logout:async()=>{},createRoom:off,joinRoom:off,watchRoom:off,setRoom:off,sendChat:off,watchChat:off};
 }
 
@@ -25,8 +26,6 @@ let spin=0;
   $('.cube').append(f);
 });
 function face(v,go){if(go)spin++;const[a,b]=ROT[v];$('.cube').style.transform=`rotateX(${a+720*spin}deg) rotateY(${b+720*spin}deg)`}
-const coins=()=>{try{const v=localStorage.getItem('sm_coins');return v===null?1000:+v}catch{return 1000}};
-const addCoins=n=>{try{localStorage.setItem('sm_coins',coins()+n)}catch{}};
 
 /* ---------- menu ---------- */
 function markSeg(){$$('.seg').forEach(sg=>[...sg.children].forEach(b=>b.classList.toggle('on',String(S[sg.dataset.k])==b.dataset.v)))}
@@ -34,7 +33,6 @@ $$('.seg').forEach(sg=>sg.onclick=e=>{const b=e.target.closest('button');if(!b)r
 markSeg();
 function renderMe(){
   const u=mp.me(),m=$('#me');m.innerHTML='';
-  const cp=document.createElement('span');cp.className='pill';cp.innerHTML='<i class="coin"></i> '+coins().toLocaleString();m.append(cp);
   const b=document.createElement('button');b.className='btn';
   if(u){m.append('👤 '+u.name+' ');b.textContent='Log out';b.onclick=async()=>{await mp.logout();renderMe()}}
   else{b.textContent='Sign in';b.onclick=()=>show('auth')}
@@ -76,6 +74,7 @@ function enter(){show('game');$('#chatbtn').hidden=ctx.mode!='online';build();dr
 const PATH=[[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
 const START=[0,13,26,39],SAFE=[0,8,13,21,26,34,39,47];
 const HC=[[1,2,3,4,5].map(i=>[7,i]),[1,2,3,4,5].map(i=>[i,7]),[13,12,11,10,9].map(i=>[7,i]),[13,12,11,10,9].map(i=>[i,7])];
+const ARR={'7,0':['→',0],'0,7':['↓',1],'7,14':['←',2],'14,7':['↑',3]};
 const FIN=[[7,6],[6,7],[7,8],[8,7]],Y0=[[0,0],[0,9],[9,9],[9,0]];
 
 const can=(k,i,r)=>{const t=g.t[k*4+i];return t<0?r==6:t+r<=56};
@@ -137,6 +136,8 @@ function botCheck(){
 }
 
 /* ---------- board building & drawing ---------- */
+const PIN='<svg viewBox="0 0 40 58" aria-hidden="true"><ellipse cx="20" cy="50" rx="13" ry="5.5" fill="none" style="stroke:color-mix(in srgb,var(--c) 45%,#000)" stroke-width="3.5"/><path d="M20 54C20 54 3 34 3 20a17 17 0 0 1 34 0c0 14-17 34-17 34z" fill="#f6f7fb" stroke="#8b93a6" stroke-width="1.5"/><circle cx="20" cy="20" r="10.5" style="fill:var(--c)" stroke="#0004" stroke-width="1"/><ellipse cx="16.5" cy="15.5" rx="4" ry="2.6" fill="#fff" opacity=".55"/></svg>';
+
 function build(){g.k=='ludo'?buildLudo():buildSnl()}
 function buildLudo(){
   const b=$('#board');b.className='lb';b.innerHTML='';els=[];
@@ -147,14 +148,15 @@ function buildLudo(){
     if(yi>=0)bg=C[yi];
     else if(pi.has(r+','+c)){
       const ix=pi.get(r+','+c),s=START.indexOf(ix);bg=s>=0?C[s]:'#fff';
-      if(s<0&&SAFE.includes(ix))d.textContent='☆';
+      if(SAFE.includes(ix)){d.textContent='★';d.className=s>=0?'star w':'star'}
+      const ar=ARR[r+','+c];if(ar){d.textContent=ar[0];d.style.color=C[ar[1]];d.style.fontWeight=900}
     }else{const h=HC.findIndex(a=>a.some(([x,y])=>x==r&&y==c));if(h>=0)bg=C[h]}
     d.style.background=bg;b.append(d);
   }
   Y0.forEach((o,yi)=>{
     const y=document.createElement('div');y.className='yard';
     y.style.left=(o[1]+1)/15*100+'%';y.style.top=(o[0]+1)/15*100+'%';
-    y.style.background=[[25,25],[75,25],[25,75],[75,75]].map(([x,z])=>`radial-gradient(circle at ${x}% ${z}%,${C[yi]} 0 16%,#0000 17%)`).join(',')+',#fff';
+    y.style.background=[[25,25],[75,25],[25,75],[75,75]].map(([x,z])=>`radial-gradient(circle at ${x}% ${z}%,${C[yi]} 0 12.5%,#0005 13.5% 16.5%,#0000 17.5%)`).join(',')+',#fff';
     const k=g.P.indexOf(yi);
     if(k>=0){const l=document.createElement('b');l.textContent=g.names[k];y.append(l)}
     b.append(y);
@@ -163,7 +165,7 @@ function buildLudo(){
   C.forEach((c,i)=>ctr.style.setProperty('--c'+i,c));b.append(ctr);
   els=g.t.map((_,n)=>{
     const e=document.createElement('button');e.className='tok';e.style.setProperty('--c',C[g.P[n>>2]]);
-    e.setAttribute('aria-label',nm(n>>2)+' token '+((n&3)+1));
+    e.setAttribute('aria-label',nm(n>>2)+' token '+((n&3)+1));e.innerHTML=PIN;
     e.onclick=()=>{
       const k=n>>2,i=n&3;
       if(g.st=='move'&&k==g.turn&&canAct()&&movable(k,g.roll).includes(i)){apply(i);sync()}
@@ -193,7 +195,6 @@ function top(){
   const dot=document.createElement('i');dot.style.background=g.st=='done'?C[g.P[g.win]]:C[p];
   st.append(dot,t);
   if(g.roll&&ctx.shown!==g.roll){ctx.shown=g.roll;face(g.roll,true)}
-  if(g.st=='done'&&!ctx.paid){ctx.paid=1;if(ctx.mode=='bot'&&g.win==0){addCoins(100);st.append('  +100 🪙')}}
   $('#dice').disabled=!(g.st=='roll'&&canAct());
 }
 
@@ -232,7 +233,7 @@ function buildSnl(){
     s+=[-1,1].map(k=>`<circle cx="${hx+h[0]*.9+hn[0]*1.4*k}" cy="${hy+h[1]*.9+hn[1]*1.4*k}" r="1" fill="#fff"/><circle cx="${hx+h[0]*1.2+hn[0]*1.4*k}" cy="${hy+h[1]*1.2+hn[1]*1.4*k}" r=".5" fill="#000"/>`).join('');
   }
   b.insertAdjacentHTML('beforeend',s+'</svg>');
-  els=g.P.map(p=>{const e=document.createElement('i');e.className='tok';e.style.setProperty('--c',C[p]);b.append(e);return e});
+  els=g.P.map(p=>{const e=document.createElement('i');e.className='tok';e.style.setProperty('--c',C[p]);e.innerHTML=PIN;b.append(e);return e});
 }
 function sDraw(){
   g.pos.forEach((n,k)=>{const[x,y]=cell(n),o=k*1.4-2;els[k].style.left=x+o+'%';els[k].style.top=y+o*.5+'%'});
