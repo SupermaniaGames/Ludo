@@ -1,7 +1,10 @@
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,onAuthStateChanged,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,updateProfile} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {getFirestore,doc,onSnapshot,updateDoc,runTransaction,collection,addDoc,query,orderBy,limit,serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import cfg from './firebase-config.js';
+import * as fc from './firebase-config.js';
+
+const cfg=fc.firebaseConfig||fc.default;
+if(!cfg||!cfg.apiKey||!cfg.appId||!cfg.messagingSenderId)throw new Error('Firebase config is missing apiKey, messagingSenderId or appId in firebase-config.js');
 
 const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
 const mail=u=>u.toLowerCase()+'@supermania.games';
