@@ -1,4 +1,9 @@
-import * as mp from './multiplayer.js';
+let mp;
+try{mp=await import('./multiplayer.js')}catch(e){
+  console.error('Firebase setup problem:',e);
+  const off=()=>{throw new Error('Online play is not set up yet. Check firebase-config.js')};
+  mp={me:()=>null,onUser(){},signIn:off,signUp:off,logout:async()=>{},createRoom:off,joinRoom:off,watchRoom:off,setRoom:off,sendChat:off,watchChat:off};
+}
 
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],F='⚀⚁⚂⚃⚄⚅';
 const C=['#e8262a','#1fa03a','#ffd60a','#1e90ff'],N=['Red','Green','Yellow','Blue'];
@@ -11,12 +16,25 @@ const say=(id,m)=>$('#'+id).textContent=m||'';
 const nm=k=>g.names[k];
 const fe=e=>({'auth/email-already-in-use':'That username is taken','auth/invalid-credential':'Wrong username or password','auth/user-not-found':'Wrong username or password','auth/wrong-password':'Wrong username or password','auth/operation-not-allowed':'Turn on Email/Password sign-in in Firebase','auth/network-request-failed':'No connection'}[e.code]||e.message||String(e));
 
+/* ---------- 3D dice & coins ---------- */
+const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]},ROT={1:[0,0],6:[0,180],2:[0,-90],5:[0,90],3:[-90,0],4:[90,0]};
+let spin=0;
+[1,2,3,4,5,6].forEach(v=>{
+  const f=document.createElement('div');f.className='face f'+v;
+  for(let i=0;i<9;i++){const s=document.createElement('span');if(PIPS[v].includes(i))s.className=v==1?'pip r':'pip';f.append(s)}
+  $('.cube').append(f);
+});
+function face(v,go){if(go)spin++;const[a,b]=ROT[v];$('.cube').style.transform=`rotateX(${a+720*spin}deg) rotateY(${b+720*spin}deg)`}
+const coins=()=>{try{const v=localStorage.getItem('sm_coins');return v===null?1000:+v}catch{return 1000}};
+const addCoins=n=>{try{localStorage.setItem('sm_coins',coins()+n)}catch{}};
+
 /* ---------- menu ---------- */
 function markSeg(){$$('.seg').forEach(sg=>[...sg.children].forEach(b=>b.classList.toggle('on',String(S[sg.dataset.k])==b.dataset.v)))}
 $$('.seg').forEach(sg=>sg.onclick=e=>{const b=e.target.closest('button');if(!b)return;S[sg.dataset.k]=isNaN(b.dataset.v)?b.dataset.v:+b.dataset.v;markSeg()});
 markSeg();
 function renderMe(){
   const u=mp.me(),m=$('#me');m.innerHTML='';
+  const cp=document.createElement('span');cp.className='pill';cp.innerHTML='<i class="coin"></i> '+coins().toLocaleString();m.append(cp);
   const b=document.createElement('button');b.className='btn';
   if(u){m.append('👤 '+u.name+' ');b.textContent='Log out';b.onclick=async()=>{await mp.logout();renderMe()}}
   else{b.textContent='Sign in';b.onclick=()=>show('auth')}
@@ -100,11 +118,9 @@ function sync(){
   botCheck();
 }
 function rollAnim(cb){
-  if(ctx.rolling)return;ctx.rolling=1;let n=0;
-  const iv=setInterval(()=>{
-    $('#dice').textContent=F[Math.random()*6|0];
-    if(++n>7){clearInterval(iv);ctx.rolling=0;cb(1+Math.random()*6|0)}
-  },60);
+  if(ctx.rolling)return;ctx.rolling=1;
+  const r=1+Math.random()*6|0;ctx.shown=r;face(r,true);
+  setTimeout(()=>{ctx.rolling=0;cb(r)},850);
 }
 $('#dice').onclick=()=>{if(g&&g.st=='roll'&&canAct())rollAnim(g.k=='snl'?sRoll:roll)};
 function botCheck(){
@@ -176,7 +192,8 @@ function top(){
   st.innerHTML='';
   const dot=document.createElement('i');dot.style.background=g.st=='done'?C[g.P[g.win]]:C[p];
   st.append(dot,t);
-  $('#dice').textContent=g.roll?F[g.roll-1]:'⚀';
+  if(g.roll&&ctx.shown!==g.roll){ctx.shown=g.roll;face(g.roll,true)}
+  if(g.st=='done'&&!ctx.paid){ctx.paid=1;if(ctx.mode=='bot'&&g.win==0){addCoins(100);st.append('  +100 🪙')}}
   $('#dice').disabled=!(g.st=='roll'&&canAct());
 }
 
@@ -185,18 +202,34 @@ const SN={16:6,47:26,49:11,56:53,62:19,64:60,87:24,93:73,95:75,98:78},LD={1:38,4
 const cell=n=>{const r=Math.floor((n-1)/10),c=r%2?9-(n-1)%10:(n-1)%10;return[c*10+5,(9-r)*10+5]};
 function buildSnl(){
   const b=$('#board');b.className='sb';b.innerHTML='';
+  const PAL=['#ff5a5f','#ffb020','#2ec4d6','#6cc644','#a66cff','#ff7ac6'];
   for(let row=9;row>=0;row--)for(let col=0;col<10;col++){
-    const n=row*10+(row%2?9-col:col)+1,d=document.createElement('i');d.textContent=n;
-    d.style.background=(row+col)%2?'#ffe9e9':'#fff7f0';b.append(d);
+    const n=row*10+(row%2?9-col:col)+1,d=document.createElement('i');
+    d.textContent=n==100?'100 🏆':n;d.style.background=PAL[(col+row*2)%6];b.append(d);
   }
+  const V=(p,q)=>[q[0]-p[0],q[1]-p[1]],len=v=>Math.hypot(v[0],v[1]);
+  const line=(p,q,w,c)=>`<line x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;
   let s='<svg viewBox="0 0 100 100">';
   for(const a in LD){
-    const[x1,y1]=cell(+a),[x2,y2]=cell(LD[a]),L=Math.hypot(x2-x1,y2-y1),ox=(y2-y1)/L*1.3,oy=-(x2-x1)/L*1.3;
-    s+=`<g stroke="#39c6d6" stroke-linecap="round"><line x1="${x1+ox}" y1="${y1+oy}" x2="${x2+ox}" y2="${y2+oy}" stroke-width="1"/><line x1="${x1-ox}" y1="${y1-oy}" x2="${x2-ox}" y2="${y2-oy}" stroke-width="1"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="2.6" stroke-dasharray=".8 2.4"/></g>`;
+    const A=cell(+a),B=cell(LD[a]),d=V(A,B),L=len(d),u=[d[0]/L,d[1]/L],nr=[-u[1]*1.7,u[0]*1.7];
+    const A1=[A[0]+nr[0],A[1]+nr[1]],A2=[A[0]-nr[0],A[1]-nr[1]],B1=[B[0]+nr[0],B[1]+nr[1]],B2=[B[0]-nr[0],B[1]-nr[1]];
+    s+=line(A1,B1,1.8,'#4a2608')+line(A2,B2,1.8,'#4a2608');
+    const cnt=Math.max(2,Math.floor(L/4.5));
+    for(let i=1;i<=cnt;i++){
+      const t=i/(cnt+1),p=[A1[0]+(B1[0]-A1[0])*t,A1[1]+(B1[1]-A1[1])*t],q=[A2[0]+(B2[0]-A2[0])*t,A2[1]+(B2[1]-A2[1])*t];
+      s+=line(p,q,1.3,'#4a2608')+line(p,q,.8,'#f2c078');
+    }
+    s+=line(A1,B1,1.1,'#d99a4a')+line(A2,B2,1.1,'#d99a4a');
   }
+  const SC=['#2fb83a','#f0a500','#e84a4a','#8a5cf0','#19a7d8'];let si=0;
   for(const a in SN){
-    const[x1,y1]=cell(+a),[x2,y2]=cell(SN[a]),mx=(x1+x2)/2+(y2-y1)*.12,my=(y1+y2)/2-(x2-x1)*.12;
-    s+=`<path d="M${x1} ${y1}Q${mx} ${my} ${x2} ${y2}" fill="none" stroke="#2fb83a" stroke-width="2.2" stroke-linecap="round" opacity=".9"/><circle cx="${x1}" cy="${y1}" r="2" fill="#1f8a2a"/><circle cx="${x1}" cy="${y1-.5}" r=".6" fill="#fff"/>`;
+    const H=cell(+a),T=cell(SN[a]),d=V(H,T),L=len(d),u=[d[0]/L,d[1]/L],nr=[-u[1],u[0]],amp=Math.min(9,L*.2);
+    const c1=[H[0]+u[0]*L*.33+nr[0]*amp,H[1]+u[1]*L*.33+nr[1]*amp],c2=[H[0]+u[0]*L*.66-nr[0]*amp,H[1]+u[1]*L*.66-nr[1]*amp];
+    const path=`M${H[0]} ${H[1]}C${c1[0]} ${c1[1]} ${c2[0]} ${c2[1]} ${T[0]} ${T[1]}`,col=SC[si++%5];
+    const tv=V(H,c1),tl=len(tv),h=[-tv[0]/tl,-tv[1]/tl],hn=[-h[1],h[0]],hx=H[0]+h[0]*.8,hy=H[1]+h[1]*.8;
+    s+=`<path d="${path}" fill="none" stroke="#12331a" stroke-width="4.4" stroke-linecap="round"/><path d="${path}" fill="none" stroke="${col}" stroke-width="3.4" stroke-linecap="round"/><path d="${path}" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="3.4" stroke-dasharray=".9 2.2"/>`;
+    s+=line([hx+h[0]*2,hy+h[1]*2],[hx+h[0]*4.4,hy+h[1]*4.4],.7,'#e11')+`<circle cx="${hx}" cy="${hy}" r="3.2" fill="${col}" stroke="#12331a" stroke-width=".9"/>`;
+    s+=[-1,1].map(k=>`<circle cx="${hx+h[0]*.9+hn[0]*1.4*k}" cy="${hy+h[1]*.9+hn[1]*1.4*k}" r="1" fill="#fff"/><circle cx="${hx+h[0]*1.2+hn[0]*1.4*k}" cy="${hy+h[1]*1.2+hn[1]*1.4*k}" r=".5" fill="#000"/>`).join('');
   }
   b.insertAdjacentHTML('beforeend',s+'</svg>');
   els=g.P.map(p=>{const e=document.createElement('i');e.className='tok';e.style.setProperty('--c',C[p]);b.append(e);return e});
