@@ -18,6 +18,7 @@
   <button class="mode" data-go="pass"><span>🎲</span><b>Pass N Play</b></button>
   <button class="mode" data-go="snl"><span>🐍</span><b>Snakes &amp; Ladders</b></button>
  </div>
+ <button class="btn" id="shareapp">📤 Share app</button>
  <button class="btn p" id="install" hidden>⬇ Install app</button>
  <p class="credit">Made by <b>Supermania Games</b> · Presented by <b>Boring Games</b></p>
 </section>
@@ -83,6 +84,21 @@
 </main>
 
 <button id="chatbtn" hidden aria-label="Chat">💬</button>
+<div id="result" hidden>
+ <div id="confetti"></div>
+ <div class="rbox">
+  <div class="rtitle">Congratulations!</div>
+  <div id="rlist"></div>
+  <div class="rbtns"><button class="btn" id="rmenu">Menu</button><button class="btn" id="rshare" aria-label="Share">📤</button><button class="btn p" id="rreplay">Replay</button></div>
+ </div>
+</div>
+<div id="dlg" hidden>
+ <div class="rbox">
+  <div class="rtitle" id="dt"></div>
+  <p id="dp"></p>
+  <div class="rbtns"><button class="btn" id="dno">Stay</button><button class="btn p" id="dyes">Leave</button></div>
+ </div>
+</div>
 <div id="chat" hidden>
  <div id="chead"><b>Chat</b><button id="cclose" aria-label="Close chat">✕</button></div>
  <div id="msgs"></div>

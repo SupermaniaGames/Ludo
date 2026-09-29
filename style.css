@@ -120,3 +120,29 @@ body{background:radial-gradient(circle,#ffffff0d 5px,transparent 6px) 0 0/46px 4
 .dice.big{--d:64px;perspective:420px}
 .dice.big:not(:disabled){filter:drop-shadow(0 0 10px #ffd54a)}
 #game.solo .dbox{display:none}
+
+/* results, dialogs, crowns, polish */
+#result,#dlg{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:#000b;padding:16px}
+.rbox{width:min(92vw,420px);background:linear-gradient(#123a92,#071a55);border:4px solid var(--gold);border-radius:20px;padding:18px;box-shadow:0 0 30px #ffc21a88;text-align:center;position:relative;z-index:2}
+.rtitle{font-size:1.8rem;font-weight:900;color:#ffd54a;text-shadow:0 3px 0 #7a4b00,0 0 12px #ffc21a88;margin-bottom:10px}
+#dp{margin-bottom:6px}
+.rrow{display:flex;align-items:center;gap:10px;padding:8px 10px;margin:8px 0;border-radius:12px;background:#ffffff18;font-weight:800}
+.rrow.r0{background:linear-gradient(#ffd54a,#f0a800);color:#14286b}
+.rrow .nm{flex:1;text-align:left;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rav{font-size:1.6rem;width:40px;height:40px;background:#fff;border-radius:8px;display:grid;place-items:center}
+.ric{position:relative;font-size:2rem;width:44px;text-align:center;line-height:1}
+.ric b{position:absolute;left:0;right:0;top:50%;transform:translateY(-30%);font-size:.85rem;color:#3a2200}
+.rbtns{display:flex;gap:10px;margin-top:14px}
+.rbtns .btn{flex:1;width:auto}
+#confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+#confetti span{position:absolute;top:-10vh;font-size:1.4rem;animation:fall linear infinite}
+@keyframes fall{to{transform:translateY(115vh) rotate(360deg)}}
+.crown{position:absolute;inset:0;display:none;place-items:center;font-size:min(14vw,58px);z-index:1;filter:drop-shadow(0 3px 3px #0006)}
+.crown.on{display:grid}
+.crown b{position:absolute;font-size:.4em;color:#2a1800;top:50%;transform:translateY(-25%)}
+.tok.hop{animation:hop .3s ease-out}
+@keyframes hop{50%{transform:translate(-50%,-125%) scale(var(--s,1))}}
+#logo{animation:bob 3s ease-in-out infinite alternate;box-shadow:0 8px 24px #0006,0 0 0 4px var(--gold)}
+@keyframes bob{to{transform:translateY(-6px)}}
+.mode:hover{filter:brightness(1.1)}
+@media (prefers-reduced-motion:reduce){#logo,.tok.hop{animation:none}#confetti span{animation:none}}
