@@ -146,3 +146,16 @@ body{background:radial-gradient(circle,#ffffff0d 5px,transparent 6px) 0 0/46px 4
 @keyframes bob{to{transform:translateY(-6px)}}
 .mode:hover{filter:brightness(1.1)}
 @media (prefers-reduced-motion:reduce){#logo,.tok.hop{animation:none}#confetti span{animation:none}}
+
+/* smooth glide, timer badge, username, splash */
+.tok{transition:left .24s linear,top .24s linear}
+.tok.hop{animation:none}
+.pc[data-t]::after{content:attr(data-t);position:absolute;top:-12px;left:50%;transform:translateX(-50%);min-width:28px;height:26px;padding:0 6px;border-radius:13px;background:#ffd54a;color:#14286b;font-weight:900;display:grid;place-items:center;font-size:.85rem;border:2px solid #fff;z-index:4}
+.pc[data-t="3"]::after,.pc[data-t="2"]::after,.pc[data-t="1"]::after,.pc[data-t="0"]::after{background:#ff4a4a;color:#fff}
+.pc.gone{opacity:.4;filter:grayscale(.8)}
+#me{align-self:stretch}
+.avbtn{margin-right:0}
+.uname{margin-right:auto;font-weight:900;font-size:1.05rem;text-shadow:0 2px 0 #0007;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#splash{position:fixed;inset:0;z-index:100;background:#0d1b3e;transition:opacity .5s}
+#splash img{width:100%;height:100%;object-fit:cover;display:block}
+#splash.hide{opacity:0;pointer-events:none}

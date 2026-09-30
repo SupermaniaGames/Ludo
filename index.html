@@ -3,15 +3,17 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Supermania Ludo</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1747b8">
+<meta name="theme-color" content="#0d1b3e">
 <link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css">
 </head><body>
+<div id="splash"><img src="splash.png" alt="" onerror="this.parentNode.remove()"></div>
+<script>setTimeout(function(){var s=document.getElementById('splash');if(s)s.remove()},3000)</script>
 <main id="app">
 
 <section class="sc" id="home">
  <div id="me"></div>
- <img id="logo" src="logo.png" alt="Supermania Ludo">
+ <img id="logo" src="home-logo.png" alt="Supermania Ludo">
  <div class="grid">
   <button class="mode" data-go="friends"><span>👥</span><b>Play with friends</b></button>
   <button class="mode" data-go="bot"><span>🤖</span><b>Computer</b></button>
