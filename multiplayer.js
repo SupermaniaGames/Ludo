@@ -1,6 +1,6 @@
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,onAuthStateChanged,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,updateProfile,signInAnonymously} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import {getFirestore,doc,onSnapshot,updateDoc,runTransaction,collection,addDoc,query,orderBy,limit,serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import {getFirestore,doc,onSnapshot,updateDoc,runTransaction,collection,addDoc,query,orderBy,limit,serverTimestamp,setDoc,deleteDoc,where} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import * as fc from './firebase-config.js';
 
 const cfg=fc.firebaseConfig||fc.default;
@@ -49,3 +49,11 @@ export const setRoom=(code,patch)=>updateDoc(R(code),patch);
 const CH=code=>collection(db,'ludoRooms',code,'chat');
 export const sendChat=(code,text)=>addDoc(CH(code),{uid:me().uid,name:me().name,text,ts:serverTimestamp()});
 export const watchChat=(code,cb)=>onSnapshot(query(CH(code),orderBy('ts'),limit(60)),s=>cb(s.docs.map(d=>d.data())));
+
+/* ---------- who is online + invites ---------- */
+const PR=collection(db,'ludoPresence');
+export const setPresence=(name,av,on)=>{const u=me();return u?setDoc(doc(db,'ludoPresence',u.uid),{name,av:av||'🙂',on:!!on,lastSeen:Date.now()},{merge:true}):Promise.resolve()};
+export const watchOnline=cb=>onSnapshot(query(PR,where('lastSeen','>',Date.now()-120000),limit(60)),s=>cb(s.docs.map(d=>({uid:d.id,...d.data()}))),()=>cb([]));
+export const sendInvite=(toUid,code,name,av)=>addDoc(collection(db,'ludoInvites',toUid,'items'),{from:me().uid,fromName:name,av:av||'🙂',code,ts:Date.now()});
+export const watchInvites=cb=>{const u=me();return onSnapshot(collection(db,'ludoInvites',u.uid,'items'),s=>cb(s.docs.map(d=>({id:d.id,...d.data()}))),()=>{})};
+export const delInvite=id=>deleteDoc(doc(db,'ludoInvites',me().uid,'items',id));

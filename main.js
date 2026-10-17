@@ -3,7 +3,7 @@ try{mp=await import('./multiplayer.js')}catch(e){
   console.error('Firebase setup problem:',e);
   const why=String(e&&e.message||'').includes('Firebase config')?e.message:'Online play is not set up. Check firebase-config.js';
   const off=()=>{throw new Error(why)};
-  mp={me:()=>null,onUser(){},signIn:off,signUp:off,logout:async()=>{},createRoom:off,joinRoom:off,watchRoom:off,setRoom:off,sendChat:off,watchChat:off};
+  mp={me:()=>null,onUser(){},signIn:off,signUp:off,logout:async()=>{},createRoom:off,joinRoom:off,watchRoom:off,setRoom:off,sendChat:off,watchChat:off,setPresence:off,watchOnline:off,sendInvite:off,watchInvites:off,delInvite:off};
 }
 
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],F='⚀⚁⚂⚃⚄⚅';
@@ -120,7 +120,7 @@ function renderMe(){
   ab.onclick=()=>{buildAvGrid();show('chars')};m.append(ab);
   const un=document.createElement('span');un.className='uname';un.textContent=u?u.name:'Not signed in';m.append(un);
   const b=document.createElement('button');b.className='btn';
-  if(u){b.textContent='Log out';b.onclick=async()=>{await mp.logout();renderMe()}}
+  if(u){b.textContent='Log out';b.onclick=async()=>{try{await mp.setPresence(mpName(),myAv(),false)}catch{}stopSocial();await mp.logout();renderMe()}}
   else{b.textContent='Sign in';b.onclick=()=>show('auth')}
   m.append(b);
 }
@@ -128,10 +128,66 @@ const pendingRoom=new URLSearchParams(location.search).get('room');
 if(/^\d{4}$/.test(pendingRoom||''))S.pending=pendingRoom;
 let booted=false;
 mp.onUser(u=>{
-  renderMe();
+  renderMe();startSocial(u);
   if(booted)return;booted=true;
   if(S.pending){if(u)joinCode(S.pending);else{say('aerr','Sign in or play as a guest to join room '+S.pending);show('auth')}}
 });
+/* ---------- who is online + invites ---------- */
+const mpName=()=>(mp.me()||{}).name||'';
+const hidden=()=>{try{return localStorage.getItem('sm_hide')=='1'}catch{return false}};
+let soc={};
+function beat(){if(!mp.me())return;mp.setPresence(mpName(),myAv(),!hidden()&&document.visibilityState=='visible').catch(()=>{})}
+function stopSocial(){clearInterval(soc.hb);soc.un&&soc.un();soc.ui&&soc.ui();soc={};$('#inv').hidden=true;renderOnline()}
+function startSocial(u){
+  if(!u){if(soc.uid)stopSocial();return}
+  if(soc.uid==u.uid)return;
+  stopSocial();soc.uid=u.uid;soc.list=[];
+  try{
+    beat();soc.hb=setInterval(()=>{if(document.visibilityState=='visible')beat();renderOnline()},30000);
+    soc.un=mp.watchOnline(l=>{soc.list=l;renderOnline()});
+    soc.ui=mp.watchInvites(l=>{
+      const now=Date.now();
+      l.forEach(i=>{if(now-i.ts>6e5)mp.delInvite(i.id).catch(()=>{})});
+      const fresh=l.filter(i=>now-i.ts<=6e5).sort((a,b)=>b.ts-a.ts)[0];
+      if(fresh)showInvite(fresh);else $('#inv').hidden=true;
+    });
+  }catch(e){console.warn('presence off',e)}
+}
+document.addEventListener('visibilitychange',()=>{if(soc.uid)beat()});
+addEventListener('pagehide',()=>{if(soc.uid)beat()});
+function showInvite(i){
+  $('#invt').textContent=(i.av||'🙂')+' '+i.fromName+' invited you to play Ludo';
+  $('#inv').hidden=false;
+  $('#invj').onclick=async()=>{$('#inv').hidden=true;mp.delInvite(i.id).catch(()=>{});leave();S.pending=null;await joinCode(i.code)};
+  $('#invx').onclick=()=>{$('#inv').hidden=true;mp.delInvite(i.id).catch(()=>{})};
+  try{sfx.start()}catch{}
+}
+function renderOnline(){
+  const me=mp.me(),now=Date.now();
+  const list=((soc.list)||[]).filter(p=>me&&p.uid!=me.uid&&p.on&&now-p.lastSeen<90000);
+  $$('.onl').forEach(ul=>{
+    ul.innerHTML='';
+    if(!list.length){const li=document.createElement('li');li.className='none';li.textContent='No one else is online right now';ul.append(li);return}
+    list.forEach(p=>{
+      const li=document.createElement('li'),d=document.createElement('i'),n=document.createElement('span'),b=document.createElement('button');
+      d.className='dot';n.textContent=(p.av||'🙂')+' '+p.name;b.className='btn p';b.textContent='Invite';
+      b.onclick=()=>invite(p,b);li.append(d,n,b);ul.append(li);
+    });
+  });
+}
+async function invite(p,b){
+  try{
+    b.disabled=true;
+    let code=ctx.code,fresh=false;
+    if(!code){code=await mp.createRoom(S.max,myAv());fresh=true}
+    await mp.sendInvite(p.uid,code,mpName(),myAv());
+    b.textContent='Invited ✓';
+    if(fresh)watch(code);
+  }catch(e){b.disabled=false;say('ferr',fe(e))}
+}
+$('#hide').onchange=e=>{try{localStorage.setItem('sm_hide',e.target.checked?'1':'0')}catch{}beat()};
+$('#hide').checked=hidden();
+
 function leave(){
   clearTimer();clearTimeout(ctx.bt);ctx.unsubR&&ctx.unsubR();ctx.unsubC&&ctx.unsubC();
   ctx={};g=null;animCount=0;$('#result').hidden=true;$('#dlg').hidden=true;$('#chat').hidden=true;$('#chatbtn').hidden=true;
@@ -367,8 +423,8 @@ function startAnim(n,target){
     const v=vis[n];
     if(v===target){e._a=0;if(--animCount<=0){animCount=0;settle()}return}
     vis[n]=(target<0||v<0||target<v)?target:v+1;
-    layout();target<0?sfx.cap():sfx.step();
-    e._t=setTimeout(step,vis[n]===target?320:240);
+    layout();target<0?sfx.cap():(sfx.step(),e.classList.remove('hop'),void e.offsetWidth,e.classList.add('hop'));
+    e._t=setTimeout(step,vis[n]===target?240:170);
   };
   step();
 }
@@ -386,7 +442,7 @@ function draw(){
     if(vis[n]===target||els[n]._g===target)return;
     if(target<0&&vis[n]>=0&&maxSteps>0){
       const e=els[n],my=ctx;e._g=target;if(!e._a){e._a=1;animCount++}
-      clearTimeout(e._t);e._t=setTimeout(()=>{if(ctx===my&&g)startAnim(n,target)},maxSteps*240);
+      clearTimeout(e._t);e._t=setTimeout(()=>{if(ctx===my&&g)startAnim(n,target)},maxSteps*170);
     }else startAnim(n,target);
   });
   layout();mark();top();
@@ -468,7 +524,7 @@ function sRoll(r){
   g.st='busy';g.roll=r;g.rp=g.P[k];g.rc=(g.rc||0)+1;g.msg=nm(k)+' rolled '+r;sDraw();
   const step=()=>{
     if(!g)return;
-    if(left>0){g.pos[k]++;left--;sDraw();sfx.step();return setTimeout(step,260)}
+    if(left>0){g.pos[k]++;left--;sDraw();sfx.step();return setTimeout(step,190)}
     const q=g.pos[k],to=SN[q]||LD[q];
     if(to){g.pos[k]=to;g.msg=nm(k)+(SN[q]?' got bitten!':' climbed up!');sDraw()}
     if(g.pos[k]==100){g.st='done';g.win=k;return sDraw()}

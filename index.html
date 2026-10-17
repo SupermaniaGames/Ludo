@@ -60,6 +60,9 @@
  <input id="code" inputmode="numeric" maxlength="4" placeholder="4-digit code">
  <button class="btn" id="join">Join room</button>
  <p class="err" id="ferr"></p>
+ <label class="hid"><input type="checkbox" id="hide"> Appear offline</label>
+ <h3>🟢 Online now</h3>
+ <ul class="onl"></ul>
  <button class="btn" data-back>Back</button>
 </section>
 
@@ -71,6 +74,8 @@
  <button class="btn p" id="wa">Share on WhatsApp</button>
  <button class="btn" id="copy">Copy invite link</button>
  <p class="hint" id="link"></p>
+ <h3>🟢 Online now</h3>
+ <ul class="onl"></ul>
  <button class="btn p" id="start" hidden>Start game</button>
  <button class="btn" data-back>Leave</button>
 </section>
@@ -85,6 +90,7 @@
 
 </main>
 
+<div id="inv" hidden><span id="invt"></span><button class="btn p" id="invj">Join</button><button class="btn" id="invx" aria-label="Dismiss">✕</button></div>
 <button id="chatbtn" hidden aria-label="Chat">💬</button>
 <div id="result" hidden>
  <div id="confetti"></div>

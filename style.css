@@ -148,8 +148,9 @@ body{background:radial-gradient(circle,#ffffff0d 5px,transparent 6px) 0 0/46px 4
 @media (prefers-reduced-motion:reduce){#logo,.tok.hop{animation:none}#confetti span{animation:none}}
 
 /* smooth glide, timer badge, username, splash */
-.tok{transition:left .24s linear,top .24s linear}
-.tok.hop{animation:none}
+.tok{transition:left .17s linear,top .17s linear}
+.tok.hop{animation:hop .17s ease-out}
+@keyframes hop{50%{transform:translate(-50%,-102%) scale(var(--s,1))}}
 .pc[data-t]::after{content:attr(data-t);position:absolute;top:-12px;left:50%;transform:translateX(-50%);min-width:28px;height:26px;padding:0 6px;border-radius:13px;background:#ffd54a;color:#14286b;font-weight:900;display:grid;place-items:center;font-size:.85rem;border:2px solid #fff;z-index:4}
 .pc[data-t="3"]::after,.pc[data-t="2"]::after,.pc[data-t="1"]::after,.pc[data-t="0"]::after{background:#ff4a4a;color:#fff}
 .pc.gone{opacity:.4;filter:grayscale(.8)}
@@ -159,3 +160,16 @@ body{background:radial-gradient(circle,#ffffff0d 5px,transparent 6px) 0 0/46px 4
 #splash{position:fixed;inset:0;z-index:100;background:#0d1b3e;transition:opacity .5s}
 #splash img{width:100%;height:100%;object-fit:cover;display:block}
 #splash.hide{opacity:0;pointer-events:none}
+
+/* online + invites */
+.onl{list-style:none;margin:0;padding:0;width:100%;display:grid;gap:6px}
+.onl li{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;background:#ffffff18}
+.onl li span{flex:1;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.onl li .btn{padding:6px 12px;min-height:0}
+.onl li.none{justify-content:center;opacity:.7}
+.dot{width:9px;height:9px;border-radius:50%;background:#3ddc6b;box-shadow:0 0 6px #3ddc6b}
+.hid{display:flex;gap:8px;align-items:center;font-size:.9rem}
+#inv{position:fixed;left:50%;top:max(10px,env(safe-area-inset-top));transform:translateX(-50%);width:min(94vw,420px);z-index:60;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:16px;background:#14286b;border:2px solid #ffd54a;color:#fff;box-shadow:0 8px 24px #0009}
+#inv[hidden]{display:none}
+#inv span{flex:1;font-weight:700}
+#inv .btn{padding:6px 12px;min-height:0}
