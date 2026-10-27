@@ -6,10 +6,13 @@ try{mp=await import('./multiplayer.js')}catch(e){
   mp={me:()=>null,onUser(){},signIn:off,signUp:off,logout:async()=>{},createRoom:off,joinRoom:off,watchRoom:off,setRoom:off,sendChat:off,watchChat:off,setPresence:off,watchOnline:off,sendInvite:off,watchInvites:off,delInvite:off};
 }
 
+let duel=null;
+try{duel=await import('./duel.js')}catch(e){console.error('Ludo Duel failed to load',e)}
+
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],F='⚀⚁⚂⚃⚄⚅';
 const C=['#e8262a','#1fa03a','#ffd60a','#1e90ff'],N=['Red','Green','Yellow','Blue'];
 const SEATS={2:[0,2],3:[0,1,2],4:[0,1,2,3]};
-const S={game:'ludo',mode:'bot',np:2,max:2};
+const S={game:'ludo',mode:'bot',np:2,max:2,dmode:'bot'};
 let g=null,ctx={},els=[];
 
 const show=id=>$$('.sc').forEach(s=>s.hidden=s.id!=id);
@@ -189,13 +192,14 @@ $('#hide').onchange=e=>{try{localStorage.setItem('sm_hide',e.target.checked?'1':
 $('#hide').checked=hidden();
 
 function leave(){
-  clearTimer();clearTimeout(ctx.bt);ctx.unsubR&&ctx.unsubR();ctx.unsubC&&ctx.unsubC();
+  duel&&duel.stop();clearTimer();clearTimeout(ctx.bt);ctx.unsubR&&ctx.unsubR();ctx.unsubC&&ctx.unsubC();
   ctx={};g=null;animCount=0;$('#result').hidden=true;$('#dlg').hidden=true;$('#chat').hidden=true;$('#chatbtn').hidden=true;
 }
 function home(){leave();show('home');renderMe()}
 $$('[data-go]').forEach(b=>b.onclick=()=>{
   const v=b.dataset.go;
   if(v=='friends')return show(mp.me()?'friends':'auth');
+  if(v=='duel'){if(!duel)return alert('Ludo Duel could not load. Check that duel.js is uploaded.');markSeg();return show('dsetup')}
   S.game=v=='snl'?'snl':'ludo';S.mode=v=='snl'?'pass':v;markSeg();show('setup');
 });
 async function doAuth(create){
@@ -645,7 +649,7 @@ function showResult(){
   $('#result').hidden=false;
 }
 $('#rmenu').onclick=home;
-$('#rreplay').onclick=()=>{$('#result').hidden=true;$('#play').onclick()};
+$('#rreplay').onclick=()=>{$('#result').hidden=true;duel&&duel.active()?duel.start(denv()):$('#play').onclick()};
 $('#rshare').onclick=()=>shareApp('I just played Supermania Ludo! Come play with me:');
 
 /* ---------- share app ---------- */
@@ -668,6 +672,7 @@ const cur=()=>($$('.sc').find(s=>!s.hidden)||{}).id;
 function leaveFlow(){
   const sc=cur();
   if(sc=='game'&&g&&g.st!='done')ask('Leave game?','Your game will be lost.','Leave',home);
+  else if(sc=='duel'&&duel&&duel.active()&&!duel.over())ask('Leave game?','Your game will be lost.','Leave',home);
   else if(sc=='lobby')ask('Leave room?','You will leave this room.','Leave',home);
   else home();
 }
@@ -742,3 +747,8 @@ function forfeit(k){
 
 /* ---------- splash ---------- */
 setTimeout(()=>{const s=$('#splash');if(s){s.classList.add('hide');setTimeout(()=>s.remove(),600)}},1400);
+
+/* ---------- Ludo Duel ---------- */
+const denv=()=>({sfx,tone,AVS,myAv,show,home,ask,mode:S.dmode,myName:()=>(mp.me()||{}).name||'',muted:()=>muted});
+$('#dplay').onclick=()=>duel&&duel.start(denv());
+$('#dmute').onclick=()=>{$('#mute').click();$('#dmute').textContent=muted?'🔇':'🔊'};

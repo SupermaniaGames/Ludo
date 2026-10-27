@@ -19,6 +19,7 @@
   <button class="mode" data-go="bot"><span>🤖</span><b>Computer</b></button>
   <button class="mode" data-go="pass"><span>🎲</span><b>Pass N Play</b></button>
   <button class="mode" data-go="snl"><span>🐍</span><b>Snakes &amp; Ladders</b></button>
+  <button class="mode wide" data-go="duel"><span>⚔️</span><b>Ludo Duel · 2 players</b></button>
  </div>
  <button class="btn" id="shareapp">📤 Share app</button>
  <button class="btn p" id="install" hidden>⬇ Install app</button>
@@ -78,6 +79,29 @@
  <ul class="onl"></ul>
  <button class="btn p" id="start" hidden>Start game</button>
  <button class="btn" data-back>Leave</button>
+</section>
+
+<section class="sc" id="dsetup" hidden>
+ <h2>⚔️ Ludo Duel</h2>
+ <p class="hint">A fast 2-player Ludo with 3 tokens each</p>
+ <div class="seg" data-k="dmode"><button data-v="bot">Computer</button><button data-v="pass">Pass N Play</button></div>
+ <ul class="drules">
+  <li>✂ <b>Split steps:</b> divide your roll between two tokens, so you almost never lose a turn.</li>
+  <li>6️⃣ A 6 enters a token or moves 6, and gives a bonus roll. Three 6s are fine.</li>
+  <li>⚔ <b>Capture</b> sends a token home and gives your token +1 step on every move after.</li>
+  <li>⚡ <b>Boost tile:</b> push 1 extra step. 🛑 <b>Shield tile:</b> safe for one full turn. ★ is always safe.</li>
+  <li>🏁 First to bring all 3 tokens home wins. Exact count needed to finish.</li>
+ </ul>
+ <button class="btn p" id="dplay">Play</button>
+ <button class="btn" data-back>Back</button>
+</section>
+
+<section class="sc" id="duel" hidden>
+ <div id="dbar"><button class="btn" data-back>Menu</button><b>⚔ Ludo Duel</b><button class="btn" id="dmute" aria-label="Sound on or off">🔊</button></div>
+ <div class="dwrap" id="dtop"></div>
+ <div id="dboard"></div>
+ <div id="dpanel"><div id="dmsg"></div><div id="dact"></div></div>
+ <div class="dwrap" id="dbot"></div>
 </section>
 
 <section class="sc" id="game" hidden>
