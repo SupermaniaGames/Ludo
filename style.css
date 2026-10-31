@@ -249,3 +249,24 @@ body{background:radial-gradient(circle,#ffffff0d 5px,transparent 6px) 0 0/46px 4
 .dcard{border:2px solid #ffffff30;box-shadow:0 6px 16px #0007}
 .dcard.act{box-shadow:0 0 0 3px #ffd54a,0 0 22px #ffd54acc,0 6px 16px #0007}
 @media (prefers-reduced-motion:reduce){.dt.fin{animation:none}}
+
+/* Ludo: Secret Ally */
+.mode.wide.ally{background:linear-gradient(90deg,#7a5a00,#0d6a3a)}
+.abadge{position:absolute;top:-10px;left:10px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:.8rem;background:radial-gradient(circle at 35% 30%,#fff3b0,#ffc21a 60%,#b67c00);border:2px solid #fff;box-shadow:0 0 8px #ffc21acc,0 2px 3px #0008;z-index:4}
+.abadge[hidden]{display:none}
+#game.sa .pn{cursor:pointer}
+#aact{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;min-height:40px;width:100%}
+#aact .btn{width:auto;padding:8px 14px;font-size:.9rem}
+#atoast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 10px);transform:translateX(-50%);z-index:40;margin:0;padding:8px 14px;border-radius:12px;background:#0b2f86;border:2px solid #ffd54a;font-weight:700;font-size:.85rem;text-align:center;width:max-content;max-width:min(92vw,440px);box-shadow:0 6px 18px #0009}
+#atoast[hidden]{display:none}
+#game:not(.sa) #aact,#game:not(.sa) #atoast{display:none}
+
+/* tighter side margins on the game screen */
+body:has(#game:not([hidden])){padding-left:6px;padding-right:6px}
+#game{padding-top:50px}
+#aact{min-height:36px}
+
+/* keep the Ludo board perfectly square, whatever the screen size */
+.lb{grid-template:repeat(15,minmax(0,1fr))/repeat(15,minmax(0,1fr))}
+.lb i{min-height:0;min-width:0;line-height:1;overflow:hidden}
+#game #board{height:var(--bw);min-height:0;flex:none}

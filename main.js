@@ -12,7 +12,7 @@ try{duel=await import('./duel.js')}catch(e){console.error('Ludo Duel failed to l
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],F='⚀⚁⚂⚃⚄⚅';
 const C=['#e8262a','#1fa03a','#ffd60a','#1e90ff'],N=['Red','Green','Yellow','Blue'];
 const SEATS={2:[0,2],3:[0,1,2],4:[0,1,2,3]};
-const S={game:'ludo',mode:'bot',np:2,max:2,dmode:'bot'};
+const S={game:'ludo',mode:'bot',np:2,max:2,dmode:'bot',amode:'bot'};
 let g=null,ctx={},els=[];
 
 const show=id=>$$('.sc').forEach(s=>s.hidden=s.id!=id);
@@ -193,12 +193,13 @@ $('#hide').checked=hidden();
 
 function leave(){
   duel&&duel.stop();clearTimer();clearTimeout(ctx.bt);ctx.unsubR&&ctx.unsubR();ctx.unsubC&&ctx.unsubC();
-  ctx={};g=null;animCount=0;$('#result').hidden=true;$('#dlg').hidden=true;$('#chat').hidden=true;$('#chatbtn').hidden=true;
+  ctx={};g=null;animCount=0;dlgNo=null;$('#result').hidden=true;$('#dlg').hidden=true;$('#chat').hidden=true;$('#chatbtn').hidden=true;
 }
 function home(){leave();show('home');renderMe()}
 $$('[data-go]').forEach(b=>b.onclick=()=>{
   const v=b.dataset.go;
   if(v=='friends')return show(mp.me()?'friends':'auth');
+  if(v=='ally')return(markSeg(),show('asetup'));
   if(v=='duel'){if(!duel)return alert('Ludo Duel could not load. Check that duel.js is uploaded.');markSeg();return show('dsetup')}
   S.game=v=='snl'?'snl':'ludo';S.mode=v=='snl'?'pass':v;markSeg();show('setup');
 });
@@ -231,7 +232,7 @@ let soloBtn=null;
 function buildCards(){
   cards=[];cubes=[];dbtn=[];soloBtn=null;
   const solo=ctx.mode=='bot',at=[];
-  $('#game').classList.toggle('solo',solo);$('#solo').hidden=!solo;
+  $('#game').classList.toggle('solo',solo);$('#game').classList.toggle('sa',!!g.sa);$('#solo').hidden=!solo;
   let soloCube=null;
   if(solo){
     soloBtn=$('#solo .dice');soloCube=$('#solo .cube');soloCube.innerHTML='';soloCube.style.transform='';soloCube._s=0;makeCube(soloCube);
@@ -244,6 +245,10 @@ function buildCards(){
     d.innerHTML='<div class="av"></div><div class="pn"><b></b><small></small></div><div class="dbox"><button class="dice" disabled aria-label="Roll the dice"><div class="cube"></div></button></div>';
     d.querySelector('.av').textContent=used?(g.avs&&g.avs[k])||'🙂':'';
     d.querySelector('b').textContent=used?nm(k):'';
+    if(g.sa&&used){
+      const bd=document.createElement('span');bd.className='abadge';bd.textContent='🤝';bd.hidden=true;d.append(bd);
+      d.querySelector('.pn').onclick=()=>reqAlly(k);
+    }
     const btn=d.querySelector('.dice'),cube=d.querySelector('.cube');
     if(solo){cubes[c]=soloCube;dbtn[c]={}}
     else{
@@ -256,7 +261,20 @@ function buildCards(){
   $('#cbot').replaceChildren(mk(at[3]),mk(at[2]));
 }
 const sSel=()=>sRoll;
-function enter(){show('game');sfx.start();$('#chatbtn').hidden=ctx.mode!='online';Q=viewQ();buildCards();build();draw();botCheck()}
+function enter(){show('game');sfx.start();$('#chatbtn').hidden=ctx.mode!='online';Q=viewQ();buildCards();build();draw();fitBoard();botCheck()}
+// make the board as big as the screen allows, with only small gaps around it
+function fitBoard(){
+  const gm=$('#game');if(!gm||gm.hidden||!g)return;
+  const gap=parseFloat(getComputedStyle(gm).rowGap)||12,bs=getComputedStyle(document.body);
+  const kids=['#ctop','#cbot','#solo','#aact'].map($).filter(e=>e&&getComputedStyle(e).display!='none');
+  let used=0;kids.forEach(e=>{used+=e.offsetHeight||0});
+  const avail=innerHeight-parseFloat(bs.paddingTop)-parseFloat(bs.paddingBottom)-50-used-gap*kids.length-16;
+  const w=Math.max(200,Math.min(gm.clientWidth,avail,480));
+  gm.style.setProperty('--bw',Math.floor(w)+'px');
+}
+addEventListener('resize',()=>requestAnimationFrame(fitBoard));
+try{const ro=new ResizeObserver(()=>fitBoard());['#ctop','#cbot','#solo','#aact'].forEach(s=>ro.observe($(s)))}catch{}
+addEventListener('orientationchange',()=>setTimeout(fitBoard,250));
 
 /* ---------- ludo engine ---------- */
 const PATH=[[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
@@ -270,7 +288,7 @@ const movable=(k,r)=>[0,1,2,3].filter(i=>can(k,i,r));
 function hits(k,n){
   const a=(START[g.P[k]]+n)%52,h=[];
   if(n>50||SAFE.includes(a))return h;
-  g.P.forEach((q,j)=>{if(j!=k)for(let x=0;x<4;x++){const t=g.t[j*4+x];if(t>=0&&t<=50&&(START[q]+t)%52==a)h.push(j*4+x)}});
+  g.P.forEach((q,j)=>{if(j!=k&&!(g.al&&g.al[k]===j))for(let x=0;x<4;x++){const t=g.t[j*4+x];if(t>=0&&t<=50&&(START[q]+t)%52==a)h.push(j*4+x)}});
   return h;
 }
 const out=j=>(g.order||[]).includes(j)||(g.forf||[]).includes(j);
@@ -278,7 +296,7 @@ const nxt=k=>{let j=k;do{j=(j+1)%g.P.length}while(out(j)&&j!=k);return j};
 const human=()=>{if(g&&g.idle)g.idle[g.turn]=0};
 function roll(r){
   if(!g||g.st!='roll')return;
-  const k=g.turn;g.roll=r;g.msg='';g.rp=g.P[k];g.rc=(g.rc||0)+1;
+  const k=g.turn;g.roll=r;g.msg='';g.rp=g.P[k];g.rc=(g.rc||0)+1;if(g.sa&&g.cd[k]>0)g.cd[k]--;
   g.sixes=r==6?(g.sixes||0)+1:0;
   if(g.sixes>=3){g.sixes=0;g.msg=nm(k)+' rolled three 6s in a row: turn lost';g.turn=nxt(k);return sync()}
   const m=movable(k,r);
@@ -288,17 +306,20 @@ function roll(r){
   sync();
 }
 function apply(i){
-  const k=g.turn,r=g.roll,t0=g.t[k*4+i],n=t0<0?0:t0+r;
+  const k=g.turn,r=g.roll,t0=g.t[k*4+i],n=t0<0?0:t0+r,base=g.gfrom!=null?g.gfrom:k,wasAl=g.sa&&g.al[k]>=0;
+  g.gfrom=null;ctx.betray=0;
   g.t[k*4+i]=n;
   const h=hits(k,n);h.forEach(x=>g.t[x]=-1);
+  if(wasAl&&h.length)g.cr[k]++;
   g.msg=h.length?nm(k)+' captured a token!':'';
   if(g.t.slice(k*4,k*4+4).every(t=>t==56)){
     g.order=(g.order||[]).concat(k);g.sixes=0;
+    const ended=g.sa&&checkAllyEnd();
     const left=g.P.map((_,j)=>j).filter(j=>!out(j));
     if(left.length<=1){if(left.length)g.order.push(left[0]);g.order=g.order.concat((g.forf||[]).slice().reverse());g.st='done';g.win=g.order[0];g.msg='';return}
-    g.msg=nm(k)+' finished in place '+g.order.length+'!';g.turn=nxt(k);g.st='roll';return;
+    g.msg=nm(k)+' finished in place '+g.order.length+'!'+(ended?' · 🤝 only allies are left: the pact is over, play for yourself!':'');g.turn=nxt(base);g.st='roll';return;
   }
-  if(!(r==6||h.length||n==56)){g.turn=nxt(k);g.sixes=0}
+  if(!(r==6||h.length||n==56)){g.turn=nxt(base);g.sixes=0}
   g.st='roll';
 }
 function xy(p,rel,i){
@@ -333,7 +354,7 @@ function botPick(k){
   const p=g.P[k],r=g.roll,mv=movable(k,r);
   const danger=abs=>{
     if(SAFE.includes(abs))return 0;let d=0;
-    g.P.forEach((q,j)=>{if(j==k)return;for(let x=0;x<4;x++){
+    g.P.forEach((q,j)=>{if(j==k||(g.al&&g.al[k]===j))return;for(let x=0;x<4;x++){
       const t=g.t[j*4+x];if(t<0||t>50)continue;
       const dist=(abs-(START[q]+t)%52+52)%52;if(dist>=1&&dist<=6)d++;
     }});
@@ -353,12 +374,13 @@ function botPick(k){
 }
 function botCheck(){
   clearTimeout(ctx.bt);
-  if(!g||g.st=='done'||!isBot())return;
+  if(!g||g.st=='done'||!isBot()||ctx.hold)return;
   ctx.bt=setTimeout(()=>{
-    if(!g||!isBot())return;
+    if(!g||!isBot()||ctx.hold)return;
     if(animCount>0)return botCheck();
-    if(g.st=='roll')return rollAnim(g.k=='snl'?sRoll:roll);
+    if(g.st=='roll'){if(g.sa&&botPropose())return;return rollAnim(g.k=='snl'?sRoll:roll)}
     if(g.st!='move')return;
+    if(g.sa&&botAlly())return;
     apply(botPick(g.turn));sync();
   },800);
 }
@@ -401,7 +423,11 @@ function buildLudo(){
     e.setAttribute('aria-label',nm(n>>2)+' token '+((n&3)+1));e.innerHTML=PIN;
     e.onclick=()=>{
       const k=n>>2,i=n&3;
-      if(g.st=='move'&&k==g.turn&&canAct()&&movable(k,g.roll).includes(i)){human();apply(i);sync()}
+      if(g.st=='move'&&k==g.turn&&canAct()&&movable(k,g.roll).includes(i)){
+        human();
+        if(ctx.betray){if(!cutsAlly(k,i))return;betrayWith(i);return sync()}
+        apply(i);sync()
+      }
     };
     b.append(e);return e;
   });
@@ -434,7 +460,7 @@ function startAnim(n,target){
 }
 function mark(){
   els.forEach(e=>e.classList.remove('go','hop'));
-  if(g.st=='move'&&canAct())movable(g.turn,g.roll).forEach(i=>els[g.turn*4+i].classList.add('go'));
+  if(g.st=='move'&&canAct()){let m=movable(g.turn,g.roll);if(ctx.betray)m=m.filter(i=>cutsAlly(g.turn,i));m.forEach(i=>els[g.turn*4+i].classList.add('go'))}
 }
 function settle(){if(!g)return;mark();top();botCheck()}
 function draw(){
@@ -474,6 +500,7 @@ function top(){
     card.querySelector('small').textContent=g.k=='ludo'?'🏁 '+g.t.slice(kk*4,kk*4+4).filter(v=>v==56).length+'/4':'📍 '+g.pos[kk];
   });
   if(soloBtn)soloBtn.disabled=!(g.st=='roll'&&canAct());
+  allyUI();
   if(ctx.mode=='online'&&!ctx.fmsg&&g.st!='done'){
     const me=g.uids.indexOf((mp.me()||{}).uid);
     if(me>=0&&(g.forf||[]).includes(me)){ctx.fmsg=1;ask('You were removed','You missed 3 turns in a row, so you forfeited this game. You can stay and watch.','Leave',home)}
@@ -649,7 +676,7 @@ function showResult(){
   $('#result').hidden=false;
 }
 $('#rmenu').onclick=home;
-$('#rreplay').onclick=()=>{$('#result').hidden=true;duel&&duel.active()?duel.start(denv()):$('#play').onclick()};
+$('#rreplay').onclick=()=>{$('#result').hidden=true;duel&&duel.active()?duel.start(denv()):(g&&g.sa?$('#aplay').onclick():$('#play').onclick())};
 $('#rshare').onclick=()=>shareApp('I just played Supermania Ludo! Come play with me:');
 
 /* ---------- share app ---------- */
@@ -663,11 +690,19 @@ $('#shareapp').onclick=()=>shareApp();
 
 /* ---------- "are you sure?" and the phone's back button ---------- */
 function ask(title,text,yes,cb,info){
-  $('#dno').hidden=!!info;
+  dlgNo=null;$('#dno').textContent='Stay';$('#dno').hidden=!!info;
   $('#dt').textContent=title;$('#dp').textContent=text;$('#dyes').textContent=yes;
   $('#dyes').onclick=()=>{closeDlg();cb()};$('#dno').onclick=closeDlg;$('#dlg').hidden=false;
 }
-const closeDlg=()=>{$('#dlg').hidden=true};
+let dlgNo=null;
+function askAB(title,text,yes,no,cbYes,cbNo){
+  $('#dno').hidden=false;$('#dt').textContent=title;$('#dp').textContent=text;
+  $('#dyes').textContent=yes;$('#dno').textContent=no;dlgNo=cbNo||null;
+  $('#dyes').onclick=()=>{dlgNo=null;closeDlg();cbYes()};
+  $('#dno').onclick=()=>closeDlg();
+  $('#dlg').hidden=false;
+}
+const closeDlg=()=>{$('#dlg').hidden=true;const f=dlgNo;dlgNo=null;f&&f()};
 const cur=()=>($$('.sc').find(s=>!s.hidden)||{}).id;
 function leaveFlow(){
   const sc=cur();
@@ -701,7 +736,7 @@ function tickTimer(){
   cards.forEach((cd,c)=>{if(!cd)return;if(c==g.P[g.turn]&&g.st!='done')cd.dataset.t=rem;else delete cd.dataset.t});
 }
 function armTimer(){
-  if(!g||g.st=='done'||g.st=='busy'||animCount||(ctx.mode=='bot'&&g.turn>0)){clearTimer();return}
+  if(!g||g.st=='done'||g.st=='busy'||animCount||ctx.hold||(ctx.mode=='bot'&&g.turn>0)){clearTimer();return}
   const key=(g.v||0)+':'+g.turn+':'+g.st+':'+(g.rc||0);
   if(ctx.tkey===key)return;
   clearTimer();ctx.tkey=key;ctx.tstart=Date.now();
@@ -735,7 +770,7 @@ function autoPlay(){
   sync();
 }
 function forfeit(k){
-  g.forf=(g.forf||[]).concat(k);g.idle[k]=0;g.msg=nm(k)+' forfeited (away 3 turns)';
+  g.forf=(g.forf||[]).concat(k);g.idle[k]=0;if(g.sa){unally(k);checkAllyEnd()}g.msg=nm(k)+' forfeited (away 3 turns)';
   const left=g.P.map((_,j)=>j).filter(j=>!out(j));
   if(left.length<=1){
     if(g.k=='ludo'){if(left.length)g.order=(g.order||[]).concat(left[0]);g.order=(g.order||[]).concat(g.forf.slice().reverse());g.win=g.order[0]}
@@ -752,3 +787,118 @@ setTimeout(()=>{const s=$('#splash');if(s){s.classList.add('hide');setTimeout(()
 const denv=()=>({sfx,tone,AVS,myAv,show,home,ask,mode:S.dmode,myName:()=>(mp.me()||{}).name||'',muted:()=>muted});
 $('#dplay').onclick=()=>duel&&duel.start(denv());
 $('#dmute').onclick=()=>{$('#mute').click();$('#dmute').textContent=muted?'🔇':'🔊'};
+
+
+/* ---------- Ludo: Secret Ally ---------- */
+$('#aplay').onclick=()=>{
+  const P=SEATS[4],bot=S.amode=='bot';ctx={mode:S.amode};
+  g={k:'ludo',sa:1,P,names:P.map((p,k)=>bot?(k?'Computer '+(k+1):'You'):N[p]),t:Array(16).fill(-1),turn:0,roll:0,st:'roll',msg:'',
+     al:[-1,-1,-1,-1],cd:[0,0,0,0],cr:[0,0,0,0],gfrom:null,idle:[0,0,0,0],forf:[],order:[]};
+  g.avs=P.map((p,k)=>bot?(k?AVS.filter(a=>a!=myAv())[(k*5+3)%15]:myAv()):AVS[p*4]);
+  // the computers sometimes team up between themselves, in secret
+  if(bot&&Math.random()<.65){const b=[1,2,3].sort(()=>Math.random()-.5);g.al[b[0]]=b[1];g.al[b[1]]=b[0]}
+  enter();
+  setTimeout(()=>{if(g&&g.sa)toast("Tip: tap a player's name before you roll to ask for a secret ally")},700);
+};
+let toastT=0;
+function toast(m){const t=$('#atoast');if(!t)return;t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true},3800)}
+const viewer=()=>ctx.mode=='bot'?0:g.turn;
+const pact=(a,b)=>{g.al[a]=b;g.al[b]=a;g.cr[a]=g.cr[b]=0};
+function unally(k){if(g.al&&g.al[k]>=0){const j=g.al[k];g.al[k]=-1;g.al[j]=-1;g.cr[k]=g.cr[j]=0}}
+// a pact ends when one ally is out, or when only the two allies are left
+function checkAllyEnd(){
+  g.P.forEach((_,k)=>{if(g.al[k]>=0&&out(k))unally(k)});
+  const left=g.P.map((_,j)=>j).filter(j=>!out(j));
+  if(left.length==2&&g.al[left[0]]===left[1]){unally(left[0]);return true}
+  return false;
+}
+// does moving token i land on a spot where it would cut the ally?
+function cutsAlly(k,i){
+  const j=g.al[k];if(j<0)return false;
+  const t=g.t[k*4+i],n=t<0?0:t+g.roll;if(n>50)return false;
+  const a=(START[g.P[k]]+n)%52;if(SAFE.includes(a))return false;
+  return [0,1,2,3].some(x=>{const u=g.t[j*4+x];return u>=0&&u<=50&&(START[g.P[j]]+u)%52==a});
+}
+function betrayWith(i){
+  const k=g.turn,j=g.al[k];
+  unally(k);g.cd[k]=3;
+  apply(i);
+  g.msg='💔 '+nm(k)+' betrayed '+nm(j)+' and cut their token!';
+}
+// hand the number you just rolled to your ally: they have to use it
+function gift(){
+  const k=g.turn,j=g.al[k],r=g.roll,m=movable(j,r);
+  g.sixes=0;g.gfrom=k;g.turn=j;ctx.betray=0;
+  g.msg=nm(j)+' uses a gifted '+r;
+  if(m.length==1)apply(m[0]);else g.st='move';
+  sync();
+}
+function reqAlly(t){
+  if(!g||!g.sa||g.st=='done'||ctx.hold)return;
+  const k=g.turn;
+  if(t===k)return;
+  if(ctx.mode=='bot'&&k!==0)return;
+  if(!canAct()||g.st!='roll')return toast('Ask for an ally at the start of your turn, before you roll');
+  if(out(t))return toast(nm(t)+' is already out');
+  if(g.al[k]>=0)return toast('You already have a secret ally');
+  if(g.cd[k]>0)return toast('No new alliance for your next '+g.cd[k]+' roll'+(g.cd[k]>1?'s':''));
+  ctx.hold=1;clearTimer();
+  askAB('Send Secret Alliance Request?','Ask '+nm(t)+' to team up in secret. Allies never cut each other.','Accept','Decline',()=>sendReq(k,t),()=>{ctx.hold=0;sync()});
+}
+function sendReq(k,t){
+  const my=ctx;
+  if(ctx.mode=='bot'){
+    toast('Request sent to '+nm(t)+'…');
+    setTimeout(()=>{
+      if(ctx!==my||!g)return;
+      if(!out(t)&&g.al[t]<0&&g.cd[t]==0&&g.al[k]<0&&Math.random()<.6){pact(k,t);toast('🤝 '+nm(t)+' accepted. Your pact is secret!');sfx.start()}
+      else toast(nm(t)+' declined');
+      ctx.hold=0;sync();
+    },1100);
+  }else{
+    if(out(t)||g.al[t]>=0||g.cd[t]>0){toast(nm(t)+' cannot ally right now');ctx.hold=0;return sync()}
+    askAB(nm(t)+': secret alliance?',nm(k)+' asks to team up in secret. Hand the phone to '+nm(t)+' first.','Accept','Decline',
+      ()=>{pact(k,t);ctx.hold=0;sync();sfx.start()},()=>{toast(nm(t)+' declined');ctx.hold=0;sync()});
+  }
+}
+// a computer sometimes asks you
+function botPropose(){
+  const k=g.turn;
+  if(ctx.mode!='bot'||g.al[k]>=0||g.cd[k]>0||g.al[0]>=0||g.cd[0]>0||out(0)||out(k)||(g.rc||0)<4||Math.random()>.12)return false;
+  ctx.hold=1;
+  askAB('🤝 '+nm(k)+' sends you a Secret Alliance Request','Accept to team up in secret. Allies never cut each other.','Accept','Decline',
+    ()=>{pact(k,0);ctx.hold=0;toast('🤝 Secret pact formed with '+nm(k));sync();sfx.start()},()=>{ctx.hold=0;sync()});
+  return true;
+}
+// the computer's use of gifts and betrayal
+function botAlly(){
+  const k=g.turn,j=g.al[k],r=g.roll;
+  if(j<0||g.gfrom!=null)return false;
+  if(g.cr[k]>0){
+    const c=movable(k,r).filter(i=>cutsAlly(k,i));
+    if(c.length&&Math.random()<.5){betrayWith(c[0]);sync();return true}
+  }
+  if(!out(j)){
+    const win=(q,i)=>{const t=g.t[q*4+i],n=t<0?0:t+r;return n==56||hits(q,n).length>0};
+    const theirs=movable(j,r).some(i=>win(j,i)),mine=movable(k,r).some(i=>win(k,i));
+    if(theirs&&!mine&&Math.random()<.7){gift();return true}
+  }
+  return false;
+}
+function allyUI(){
+  if(!g||!g.sa)return;
+  requestAnimationFrame(fitBoard);
+  const v=viewer(),pv=g.st=='done'?-1:g.al[v];
+  g.P.forEach((c,k)=>{
+    const b=cards[c]&&cards[c].querySelector('.abadge');
+    if(b){const on=pv>=0&&(k==v||k==pv);b.hidden=!on;if(on)b.title='Secret ally'}
+  });
+  const bar=$('#aact');bar.innerHTML='';
+  const k=g.turn;
+  if(g.st!='move'||v!==k||!canAct()||g.al[k]<0||g.gfrom!=null)return;
+  const j=g.al[k],r=g.roll;
+  const add=(t,f)=>{const b=document.createElement('button');b.className='btn';b.textContent=t;b.onclick=f;bar.append(b)};
+  if(!ctx.betray&&!out(j)&&movable(j,r).length)add('🎁 Gift '+r+' to ally',()=>{human();gift()});
+  if(g.cr[k]>0&&movable(k,r).some(i=>cutsAlly(k,i)))
+    add(ctx.betray?'✖ Cancel':'💔 Break Alliance & Cut',()=>{ctx.betray=ctx.betray?0:1;mark();allyUI();if(ctx.betray)toast('Tap the glowing token to cut your ally')});
+}

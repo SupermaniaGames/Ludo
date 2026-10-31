@@ -19,6 +19,7 @@
   <button class="mode" data-go="bot"><span>🤖</span><b>Computer</b></button>
   <button class="mode" data-go="pass"><span>🎲</span><b>Pass N Play</b></button>
   <button class="mode" data-go="snl"><span>🐍</span><b>Snakes &amp; Ladders</b></button>
+  <button class="mode wide ally" data-go="ally"><span>🤝</span><b>Ludo: Secret Ally · 4 players</b></button>
   <button class="mode wide" data-go="duel"><span>⚔️</span><b>Ludo Duel · 2 players</b></button>
  </div>
  <button class="btn" id="shareapp">📤 Share app</button>
@@ -81,6 +82,22 @@
  <button class="btn" data-back>Leave</button>
 </section>
 
+<section class="sc" id="asetup" hidden>
+ <h2>🤝 Ludo: Secret Ally</h2>
+ <p class="hint">4-player Ludo with secret pacts</p>
+ <div class="seg" data-k="amode"><button data-v="bot">Computer</button><button data-v="pass">Pass N Play</button></div>
+ <ul class="drules">
+  <li>🤝 <b>Ask for an ally:</b> before you roll, tap a player's name. If they accept, you are secret allies.</li>
+  <li>🛡 <b>Immunity:</b> allies on the same square never cut each other. Anyone else landing there cuts both.</li>
+  <li>🎁 <b>Gift:</b> don't want your roll? Give it to your ally. They must use it.</li>
+  <li>💔 <b>Break Alliance &amp; Cut:</b> once your pact has sent an opponent home, you may cut your ally for a bonus turn. No new ally for your next 3 rolls.</li>
+  <li>🏁 When only two allies are left, the pact ends and they race for the win.</li>
+ </ul>
+ <p class="hint">Computer mode hides the other pacts from you. In Pass N Play everyone shares one screen, so look away!</p>
+ <button class="btn p" id="aplay">Play</button>
+ <button class="btn" data-back>Back</button>
+</section>
+
 <section class="sc" id="dsetup" hidden>
  <h2>⚔️ Ludo Duel</h2>
  <p class="hint">A fast 2-player Ludo with 3 tokens each</p>
@@ -109,6 +126,8 @@
  <div class="crow" id="ctop"></div>
  <div id="board"></div>
  <div class="crow" id="cbot"></div>
+ <div id="aact"></div>
+ <p id="atoast" hidden></p>
  <div id="solo" hidden><button class="dice big" disabled aria-label="Roll the dice"><div class="cube"></div></button></div>
 </section>
 
