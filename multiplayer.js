@@ -17,7 +17,7 @@ export const signUp=async(u,p)=>{const c=await createUserWithEmailAndPassword(au
 export const guest=async(name)=>{const c=await signInAnonymously(auth);await updateProfile(c.user,{displayName:name})};
 export const logout=()=>signOut(auth);
 
-export async function createRoom(max,av){
+export async function createRoom(max,av,game){
   const u=me();
   for(let n=0;n<10;n++){
     const code=String(1000+Math.floor(Math.random()*9000));
@@ -25,7 +25,7 @@ export async function createRoom(max,av){
       await runTransaction(db,async tx=>{
         const s=await tx.get(R(code));
         if(s.exists()&&Date.now()-s.data().created<6*36e5)throw 'taken';
-        tx.set(R(code),{host:u.uid,max,status:'lobby',created:Date.now(),players:[{uid:u.uid,name:u.name,av:av||'🙂'}]});
+        tx.set(R(code),{host:u.uid,max,game:game||'ludo',status:'lobby',created:Date.now(),players:[{uid:u.uid,name:u.name,av:av||'🙂'}]});
       });
       return code;
     }catch(e){if(e!=='taken')throw e}
@@ -57,3 +57,8 @@ export const watchOnline=cb=>onSnapshot(query(PR,where('lastSeen','>',Date.now()
 export const sendInvite=(toUid,code,name,av)=>addDoc(collection(db,'ludoInvites',toUid,'items'),{from:me().uid,fromName:name,av:av||'🙂',code,ts:Date.now()});
 export const watchInvites=cb=>{const u=me();return onSnapshot(collection(db,'ludoInvites',u.uid,'items'),s=>cb(s.docs.map(d=>({id:d.id,...d.data()}))),()=>{})};
 export const delInvite=id=>deleteDoc(doc(db,'ludoInvites',me().uid,'items',id));
+
+/* ---------- private alliance data (Secret Ally online): only its owner can read it ---------- */
+const AL=(code,uid)=>doc(db,'ludoRooms',code,'ally',uid);
+export const setAlly=(code,uid,patch)=>setDoc(AL(code,uid),patch,{merge:true});
+export const watchAlly=(code,cb)=>onSnapshot(AL(code,me().uid),s=>cb(s.exists()?s.data():{},s.metadata.hasPendingWrites));

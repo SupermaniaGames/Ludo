@@ -56,7 +56,8 @@
 
 <section class="sc" id="friends" hidden>
  <h2>Play with friends</h2>
- <div class="seg" data-k="max"><button data-v="2">2 players</button><button data-v="3">3</button><button data-v="4">4</button></div>
+ <div class="seg wrap" data-k="ogame"><button data-v="ludo">🎲 Ludo</button><button data-v="snl">🐍 Snakes &amp; Ladders</button><button data-v="ally">🤝 Secret Ally</button><button data-v="duel">⚔️ Ludo Duel</button></div>
+ <div class="seg" id="maxseg" data-k="max"><button data-v="2">2 players</button><button data-v="3">3</button><button data-v="4">4</button></div>
  <button class="btn p" id="create">Create room</button>
  <p>or enter a room code</p>
  <input id="code" inputmode="numeric" maxlength="4" placeholder="4-digit code">
@@ -71,6 +72,7 @@
 <section class="sc" id="lobby" hidden>
  <h2>Room code</h2>
  <div id="rcode"></div>
+ <p class="hint" id="lgame"></p>
  <ul id="plist"></ul>
  <p id="lmsg"></p>
  <button class="btn p" id="wa">Share on WhatsApp</button>
@@ -143,6 +145,7 @@
   <div class="rbtns"><button class="btn" id="rmenu">Menu</button><button class="btn" id="rshare" aria-label="Share">📤</button><button class="btn p" id="rreplay">Replay</button></div>
  </div>
 </div>
+<div id="cover" hidden><div class="rbox"><div class="rtitle" id="cvt"></div><p id="cvs"></p><button class="btn p" id="cvb"></button></div></div>
 <div id="dlg" hidden>
  <div class="rbox">
   <div class="rtitle" id="dt"></div>

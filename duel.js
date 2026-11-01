@@ -20,7 +20,7 @@ const own=n=>n<3?0:1;
 const idxOf=(p,rel)=>(ST[p]+rel)%26;
 
 /* ---------- engine (pure, testable) ---------- */
-export const newState=()=>({t:Array(6).fill(-1),bn:Array(6).fill(0),sh:Array(6).fill(0),turn:0,roll:0,rc:0,v:0,st:'roll',msg:'',win:null,forf:null});
+export const newState=()=>({t:Array(6).fill(-1),bn:Array(6).fill(0),sh:Array(6).fill(0),turn:0,roll:0,rc:0,v:0,st:'roll',msg:'',win:null,forf:null,seq:0,rp:0});
 const clone=s=>({...s,t:s.t.slice(),bn:s.bn.slice(),sh:s.sh.slice()});
 // a token that has a boost moves one step further on every move, when that still fits
 export function eff(s,n,d){
@@ -85,7 +85,7 @@ export function botPick(s){
   return best;
 }
 export const nextRoll=(s,r)=>{ // used by the UI and tests
-  s.roll=r;s.rc++;s.msg='';
+  s.roll=r;s.rc++;s.msg='';s.rp=s.turn;
   const o=options(s,r);
   if(!o.length){passTurn(s);return o}
   s.st='move';return o;
@@ -104,7 +104,7 @@ const myFlag=()=>{
 const getCoins=()=>{try{return+localStorage.getItem('dl_coins')||1000}catch{return 1000}};
 const setCoins=v=>{try{localStorage.setItem('dl_coins',String(v))}catch{}};
 const nm=p=>D.names[p];
-const canAct=()=>D&&!D.anim&&!D.rolling&&D.s.st!='done'&&(D.mode=='pass'||D.s.turn==0);
+const canAct=()=>D&&!D.anim&&!D.rolling&&D.s.st!='done'&&(D.mode=='pass'||(D.mode=='online'?D.s.turn==D.my:D.s.turn==0));
 
 export const active=()=>!!D;
 export const over=()=>!D||D.s.st=='done';
@@ -116,11 +116,13 @@ export function stop(){
 }
 export function start(env){
   stop();E=env;
-  const bot=env.mode=='bot',AV=env.AVS,mine=env.myAv();
+  const on=env.online||null,bot=env.mode=='bot',AV=env.AVS,mine=env.myAv();
   const other=AV.filter(a=>a!=mine)[Math.floor(Math.random()*(AV.length-1))];
   const nick=(env.myName&&env.myName())||'';
-  D={s:newState(),mode:bot?'bot':'pass',names:bot?[nick||'You','Computer']:[nick||'Player 1','Player 2'],
-     avs:[mine,bot?other:AV.filter(a=>a!=mine)[3]],flags:[myFlag(),FLAGS[Math.floor(Math.random()*FLAGS.length)]],
+  D={s:on&&on.s?JSON.parse(JSON.stringify(on.s)):newState(),mode:on?'online':bot?'bot':'pass',on,my:on?on.my:0,fl:!!(on&&on.my==1),
+     names:on?on.names.slice():bot?[nick||'You','Computer']:[nick||'Player 1','Player 2'],
+     avs:on?on.avs.slice():[mine,bot?other:AV.filter(a=>a!=mine)[3]],
+     flags:on?['🌍','🌍'].map((f,i)=>i==on.my?myFlag():f):[myFlag(),FLAGS[Math.floor(Math.random()*FLAGS.length)]],
      coins:[getCoins(),bot?500+Math.floor(Math.random()*4500):1000],
      vis:Array(6).fill(-1),els:[],cards:[],cubes:[],btn:[],anim:0,rolling:0,idle:[0,0],split:{on:false,pick:[]},won:0};
   env.show('duel');env.sfx.start();
@@ -129,8 +131,8 @@ export function start(env){
 }
 
 function buildCards(){
-  const mk=p=>{
-    const d=document.createElement('div');d.className='pc dcard'+(p==1?' r':'');d.style.setProperty('--c',COL[p]);
+  const mk=(p,top)=>{
+    const d=document.createElement('div');d.className='pc dcard'+(top?' r':'');d.style.setProperty('--c',COL[p]);
     d.innerHTML='<div class="av"></div><div class="pn"><b></b><small></small></div><div class="dbox"><button class="dice" disabled aria-label="Roll the dice"><div class="cube"></div></button></div>';
     d.querySelector('.av').textContent=D.avs[p];
     d.querySelector('b').textContent=D.flags[p]+' '+D.names[p];
@@ -144,8 +146,8 @@ function buildCards(){
     btn.onclick=()=>{if(D&&D.s.st=='roll'&&canAct()&&D.s.turn==p){human();rollAnim()}};
     D.cards[p]=d;D.cubes[p]=cube;D.btn[p]=btn;return d;
   };
-  $('#dtop').replaceChildren(mk(1));
-  $('#dbot').replaceChildren(mk(0));
+  $('#dtop').replaceChildren(mk(1-D.my,true));
+  $('#dbot').replaceChildren(mk(D.my,false));
 }
 function face(p,v){
   const cu=D.cubes[p];cu._s=(cu._s||0)+1;
@@ -154,7 +156,7 @@ function face(p,v){
 
 function buildBoard(){
   const b=$('#dboard');b.innerHTML='';
-  const tile=(r,c,cls,txt,bg)=>{const d=document.createElement('i');d.className='dt '+cls;d.style.gridArea=`${r+1} / ${c+1}`;if(txt)d.textContent=txt;if(bg)d.style.background=bg;b.append(d);return d};
+  const tile=(r,c,cls,txt,bg)=>{if(D.fl){r=7-r;c=6-c}const d=document.createElement('i');d.className='dt '+cls;d.style.gridArea=`${r+1} / ${c+1}`;if(txt)d.textContent=txt;if(bg)d.style.background=bg;b.append(d);return d};
   RING.forEach(([r,c],i)=>{
     let cls='ring',txt='';
     if(SAFE.includes(i)){cls+=' safe';txt='★'}
@@ -165,10 +167,11 @@ function buildBoard(){
     if(i==0||i==13)d.classList.add('mouth');
   });
   FIN.forEach(([r,c],p)=>tile(r,c,'fin','🏁',COL[p]));
-  LANE.forEach((l,p)=>l.forEach(([r,c])=>{const d=tile(r,c,'lane arrow','',COL[p]);d.textContent=p?'▼':'▲'}));
-  YR.forEach(([r,c],p)=>{
+  LANE.forEach((l,p)=>l.forEach(([r,c])=>{const d=tile(r,c,'lane arrow','',COL[p]);d.textContent=(p?1:0)^(D.fl?1:0)?'▼':'▲'}));
+  YR.forEach(([r0,c0],p)=>{
+    const r=D.fl?6-r0:r0,c=D.fl?5-c0:c0;
     const y=document.createElement('div');y.className='dyard';y.style.gridArea=`${r+1} / ${c+1} / span 2 / span 2`;
-    const sl=YARD[p].map(([a,z])=>[(z-c)/2*100,(a-r)/2*100]);
+    const sl=YARD[p].map(([a0,z0])=>{const a=D.fl?8-a0:a0,z=D.fl?7-z0:z0;return[(z-c)/2*100,(a-r)/2*100]});
     y.style.background=sl.map(([x,yy])=>`radial-gradient(circle at ${x}% ${yy}%,#0006 0 13%,#fff6 14% 17%,#0000 18%)`).join(',')+`,color-mix(in srgb,${COL[p]} 45%,#0b1d4d)`;
     y.style.borderColor=COL[p];b.append(y);
   });
@@ -189,9 +192,10 @@ function buildBoard(){
   layout();
 }
 const posOf=(p,rel,i)=>{
-  if(rel<0)return YARD[p][i];
-  const[r,c]=rel<=25?RING[idxOf(p,rel)]:rel<=27?LANE[p][rel-26]:FIN[p];
-  return[r+.5,c+.5];
+  let R,C;
+  if(rel<0)[R,C]=YARD[p][i];
+  else{const[r,c]=rel<=25?RING[idxOf(p,rel)]:rel<=27?LANE[p][rel-26]:FIN[p];R=r+.5;C=c+.5}
+  return D.fl?[8-R,7-C]:[R,C];
 };
 function layout(){
   if(!D)return;
@@ -218,6 +222,18 @@ function startAnim(n,target){
     e._t=setTimeout(stp,D.vis[n]===target?240:170);
   };
   stp();
+}
+function pub(){if(D&&D.on){D.s.seq=(D.s.seq||0)+1;D.on.push(JSON.parse(JSON.stringify(D.s)))}}
+export function remote(s){
+  if(!D||!D.on||(s.seq||0)<=(D.s.seq||0))return;
+  const rolled=s.rc!==D.s.rc;
+  D.s=JSON.parse(JSON.stringify(s));D.idle=[0,0];D.split={on:false,pick:[]};
+  if(rolled){face(s.rp,s.roll);E.sfx.dice()}
+  refresh();
+}
+export function leaveOnline(){
+  if(!D||!D.on||D.s.st=='done')return;
+  D.s.st='done';D.s.win=1-D.my;D.s.forf=D.my;pub();
 }
 function refresh(){
   if(!D)return;
@@ -304,7 +320,7 @@ function applyOpt(o){
   if(s.st!='done'&&r==6)m.push('bonus roll');
   s.msg=m.length?nm(p)+' '+m.join(', '):'';
   s.v++;D.split={on:false,pick:[]};
-  refresh();
+  refresh();pub();
 }
 
 /* ---------- dice, bots, timer ---------- */
@@ -320,7 +336,7 @@ function doRoll(r){
   if(!o.length)s.msg=nm(k)+' rolled '+r+': no move';
   else if(o.length==1){s.msg='';return applyOpt(o[0])}
   else if(D.auto){D.auto=0;return applyOpt(botPick(s))}
-  s.v++;refresh();
+  s.v++;refresh();pub();
 }
 function botCheck(){
   if(!D)return;clearTimeout(D.bt);
@@ -343,6 +359,7 @@ function clearTimer(){
 function armTimer(){
   const s=D.s;
   if(s.st=='done'||D.anim||D.rolling||(D.mode=='bot'&&s.turn==1)){clearTimer();return}
+  const wait=D.mode=='online'&&s.turn!=D.my?TURN_MS+4000:TURN_MS;   // if the other phone has gone quiet, we step in after a grace period
   const key=s.rc+':'+s.turn+':'+s.st+':'+s.v+':'+(D.split.on?D.split.pick.length+'s':'');
   if(D.tkey===key)return;
   clearTimer();D.tkey=key;
@@ -350,14 +367,14 @@ function armTimer(){
   const tick=()=>{if(D!==my)return;const rem=Math.max(0,Math.ceil((TURN_MS-(Date.now()-t0))/1000));
     D.cards.forEach((c,p)=>{if(p==D.s.turn&&D.s.st!='done')c.dataset.t=rem;else delete c.dataset.t})};
   D.ti=setInterval(tick,250);tick();
-  D.tm=setTimeout(()=>{if(D===my&&D.tkey===key)autoPlay()},TURN_MS);
+  D.tm=setTimeout(()=>{if(D===my&&D.tkey===key)autoPlay()},wait);
 }
 function autoPlay(){
   const s=D.s,k=s.turn;
   D.idle[k]++;
   if(D.idle[k]>=3){
     if(D.mode=='bot'){E.home();E.ask('Game closed','You were away for 3 turns in a row, so the game was closed.','OK',()=>{},true);return}
-    s.st='done';s.win=1-k;s.forf=k;s.msg='';refresh();return;
+    s.st='done';s.win=1-k;s.forf=k;s.msg='';refresh();pub();return;
   }
   D.split={on:false,pick:[]};
   if(s.st=='roll'){D.auto=1;rollAnim()}
@@ -372,7 +389,7 @@ function hud(){
     c.classList.toggle('act',act);
     D.btn[p].disabled=!(act&&s.st=='roll'&&canAct());
     const home=[0,1,2].filter(i=>s.t[p*3+i]==GOAL).length,bn=[0,1,2].filter(i=>s.bn[p*3+i]).length;
-    c.querySelector('small').textContent='🪙 '+D.coins[p].toLocaleString()+'  🏁 '+home+'/3'+(bn?'  ⚡'+bn:'');
+    c.querySelector('small').textContent=(D.mode=='online'&&p!=D.my?'':'🪙 '+D.coins[p].toLocaleString()+'  ')+'🏁 '+home+'/3'+(bn?'  ⚡'+bn:'');
   });
   if(s.st=='done'&&!D.anim&&!D.won){D.won=1;E.sfx.win();setTimeout(()=>{if(D)showResult()},600)}
   panel();armTimer();
@@ -395,6 +412,6 @@ function showResult(){
   if(!matchMedia('(prefers-reduced-motion: reduce)').matches)
     for(let i=0;i<26;i++){const e=document.createElement('span');e.textContent=['🎉','✨','⭐','🎊'][i%4];
       e.style.left=Math.random()*100+'%';e.style.animationDuration=3+Math.random()*3+'s';e.style.animationDelay=Math.random()*3+'s';cf.append(e)}
-  $('#rreplay').hidden=false;
+  $('#rreplay').hidden=D.mode=='online';
   $('#result').hidden=false;
 }

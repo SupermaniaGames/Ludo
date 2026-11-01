@@ -270,3 +270,20 @@ body:has(#game:not([hidden])){padding-left:6px;padding-right:6px}
 .lb{grid-template:repeat(15,minmax(0,1fr))/repeat(15,minmax(0,1fr))}
 .lb i{min-height:0;min-width:0;line-height:1;overflow:hidden}
 #game #board{height:var(--bw);min-height:0;flex:none}
+
+/* online game picker, privacy cover */
+.seg.wrap{flex-wrap:wrap}
+.seg.wrap button{flex:1 1 44%}
+#cover{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:#0d1b3e;padding:16px}
+#cover[hidden]{display:none}
+#aact .btn[disabled]{opacity:.55}
+#dlg{z-index:80}
+
+/* Secret Ally against the computer: buttons sit left and right of the dice */
+#solo{position:relative}
+#game.solo.sa #solo{display:grid;grid-template-columns:1fr 64px 1fr;gap:6px 8px;width:var(--bw);align-items:center;min-height:64px}
+#game.solo.sa #solo .dice{grid-column:2;grid-row:1 / span 2;justify-self:center}
+#game.solo.sa #solo #aact{display:contents}
+#game.solo.sa #solo #aact .btn{font-size:.74rem;padding:5px 8px;min-height:0;width:auto;line-height:1.15}
+#game.solo.sa #solo #aact .btn:nth-child(odd){grid-column:1;justify-self:end}
+#game.solo.sa #solo #aact .btn:nth-child(even){grid-column:3;justify-self:start}
