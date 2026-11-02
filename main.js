@@ -304,6 +304,16 @@ const placed=j=>inOrder(j)||forfd(j);                       // has a final place
 const out=j=>placed(j)||(g.dn||[]).includes(j);             // skipped in the turn order (a duo partner that is home waits in g.dn)
 const nxt=k=>{let j=k;do{j=(j+1)%g.P.length}while(out(j)&&j!=k);return j};
 const human=()=>{if(g&&g.idle)g.idle[g.turn]=0};
+// fair dice: never a third 6 in a row, and nobody waits forever for a 6 to leave home
+function dice(){
+  const k=g.turn;g.ns=g.ns||[0,0,0,0];
+  let r=1+Math.random()*6|0;
+  const allHome=[0,1,2,3].every(x=>g.t[k*4+x]<0);
+  if((g.sixes||0)>=2&&r==6)r=1+Math.random()*5|0;
+  else if(r!=6&&(g.ns[k]||0)>=(allHome?5:12)&&(g.sixes||0)<2)r=6;
+  g.ns[k]=r==6?0:(g.ns[k]||0)+1;
+  return r;
+}
 function roll(r){
   if(!g||g.st!='roll')return;
   const k=g.turn;g.roll=r;g.msg='';g.rp=g.P[k];g.rc=(g.rc||0)+1;ctx.picking=0;ctx.shp=0;if(g.sa&&g.cd[k]>0)g.cd[k]--;
@@ -379,7 +389,7 @@ function sync(){
 }
 function rollAnim(cb){
   if(ctx.rolling)return;ctx.rolling=1;
-  const r=1+Math.random()*6|0,p=g.P[g.turn];ctx.shown=(g.rc||0)+1;face(p,r,true);sfx.dice();
+  const r=dice(),p=g.P[g.turn];ctx.shown=(g.rc||0)+1;face(p,r,true);sfx.dice();
   setTimeout(()=>{ctx.rolling=0;cb(r)},1200);
 }
 function botPick(k){
@@ -427,7 +437,7 @@ function buildLudo(){
   for(let r=0;r<15;r++)for(let c=0;c<15;c++){
     const d=document.createElement('i');let bg='transparent';
     const yi=Y0.findIndex(([a,z])=>r>=a&&r<a+6&&c>=z&&c<z+6);
-    if(yi>=0)bg=C[yi];
+    if(yi>=0){bg=C[yi];d.className='yc'}
     else if(pi.has(r+','+c)){
       const ix=pi.get(r+','+c),s=START.indexOf(ix);bg=s>=0?C[s]:'#fff';
       if(SAFE.includes(ix)){d.textContent='★';d.className=s>=0?'star w':'star'}
@@ -849,7 +859,7 @@ function autoPlay(){
     return forfeit(k);
   }
   if(g.k=='snl'){if(g.st=='roll')sRoll(1+Math.random()*6|0);return}
-  if(g.st=='roll')roll(1+Math.random()*6|0);
+  if(g.st=='roll')roll(dice());
   if(g.st=='move'&&g.turn==k){apply(botPick(k));sync()}
   if(!g.msg)g.msg=nm(k)+' was away: played automatically';
   sync();
