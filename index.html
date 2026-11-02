@@ -89,11 +89,12 @@
  <p class="hint">4-player Ludo with secret pacts</p>
  <div class="seg" data-k="amode"><button data-v="bot">Computer</button><button data-v="pass">Pass N Play</button></div>
  <ul class="drules">
-  <li>🤝 <b>Ask for an ally:</b> before you roll, tap a player's name. If they accept, you are secret allies.</li>
-  <li>🛡 <b>Immunity:</b> allies on the same square never cut each other. Anyone else landing there cuts both.</li>
-  <li>🎁 <b>Gift:</b> don't want your roll? Give it to your ally. They must use it.</li>
-  <li>💔 <b>Break Alliance &amp; Cut:</b> once your pact has sent an opponent home, you may cut your ally for a bonus turn. No new ally for your next 3 rolls.</li>
-  <li>🏁 When only two allies are left, the pact ends and they race for the win.</li>
+  <li>🤝 <b>Ask for an ally:</b> before you roll, tap 🤝 Ask for ally (or a player's name). Choose how the pact works: <b>⏳ Temporary</b> (counts down, both must agree to renew) or <b>♾ Continuous</b>. The other player must accept, or the request runs out.</li>
+  <li>🏁 <b>Victory:</b> <b>Duo</b> means you both bring all tokens home to win together. <b>Solo</b> means you each win on your own. Allies never cut each other, anyone else still can.</li>
+  <li>🛡 <b>Shield:</b> once per game, protect one token from being cut during the next player's turn. Raise it on your own turn.</li>
+  <li>⚠ <b>Danger:</b> a red mark shows your token can be cut by one roll.</li>
+  <li>🎁 <b>Gift</b> a roll to your ally, who must use it. 💔 <b>Break &amp; Cut</b> after your pact has cut an opponent.</li>
+  <li>😊 Quick reactions: 🤝 😂 😈 🛡️ 👏.</li>
  </ul>
  <p class="hint">Computer mode hides the other pacts from you. In Pass N Play everyone shares one screen, so look away!</p>
  <button class="btn p" id="aplay">Play</button>
@@ -124,7 +125,8 @@
 </section>
 
 <section class="sc" id="game" hidden>
- <div id="bar"><button class="btn" data-back>Menu</button><div id="status"></div><button class="btn" id="mute" aria-label="Sound on or off">🔊</button></div>
+ <div id="bar"><button class="btn" data-back>Menu</button><div id="status"></div><button class="btn" id="rxbtn" hidden aria-label="Quick reactions">😊</button><button class="btn" id="mute" aria-label="Sound on or off">🔊</button></div>
+ <div id="rxbar" hidden></div>
  <div class="crow" id="ctop"></div>
  <div id="board"></div>
  <div class="crow" id="cbot"></div>
@@ -145,6 +147,16 @@
   <div class="rbtns"><button class="btn" id="rmenu">Menu</button><button class="btn" id="rshare" aria-label="Share">📤</button><button class="btn p" id="rreplay">Replay</button></div>
  </div>
 </div>
+<div id="areq" hidden><div class="rbox">
+  <div class="rtitle">Send Secret Alliance Request?</div>
+  <p id="areqt"></p>
+  <div class="lbl">Alliance</div>
+  <div class="sg" data-k="m"><button data-v="t">⏳ Temporary</button><button data-v="c">♾ Continuous</button></div>
+  <div id="areq-d"><div class="lbl">Lasts</div><div class="sg" data-k="d"><button data-v="12">12 turns</button><button data-v="20">20 turns</button><button data-v="32">32 turns</button></div></div>
+  <div class="lbl">Victory</div>
+  <div class="sg" data-k="vm"><button data-v="duo">🤝 Duo Victory</button><button data-v="solo">🏁 Solo Victory</button></div>
+  <div class="rbtns"><button class="btn" id="areqx">Cancel</button><button class="btn p" id="areqs">Send request</button></div>
+ </div></div>
 <div id="cover" hidden><div class="rbox"><div class="rtitle" id="cvt"></div><p id="cvs"></p><button class="btn p" id="cvb"></button></div></div>
 <div id="dlg" hidden>
  <div class="rbox">
