@@ -12,7 +12,7 @@ try{duel=await import('./duel.js')}catch(e){console.error('Ludo Duel failed to l
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],F='⚀⚁⚂⚃⚄⚅';
 const C=['#e8262a','#1fa03a','#ffd60a','#1e90ff'],N=['Red','Green','Yellow','Blue'];
 const SEATS={2:[0,2],3:[0,1,2],4:[0,1,2,3]};
-const S={game:'ludo',mode:'bot',np:2,max:2,dmode:'bot',amode:'bot',ogame:'ludo'};
+const S={game:'ludo',mode:'bot',np:2,max:2,dmode:'bot',amode:'bot',ogame:'ludo',vmode:'solo'};
 let g=null,ctx={},els=[];
 
 const show=id=>$$('.sc').forEach(s=>s.hidden=s.id!=id);
@@ -115,12 +115,13 @@ function buildAvGrid(){
 
 /* ---------- menu ---------- */
 function markSeg(){$$('.seg').forEach(sg=>[...sg.children].forEach(b=>b.classList.toggle('on',String(S[sg.dataset.k])==b.dataset.v)))}
-$$('.seg').forEach(sg=>sg.onclick=e=>{const b=e.target.closest('button');if(!b)return;S[sg.dataset.k]=isNaN(b.dataset.v)?b.dataset.v:+b.dataset.v;markSeg()});
+$$('.seg').forEach(sg=>sg.onclick=e=>{const b=e.target.closest('button');if(!b)return;S[sg.dataset.k]=isNaN(b.dataset.v)?b.dataset.v:+b.dataset.v;markSeg();const vh=$('#vmhint');if(vh)vh.textContent=VMT[S.vmode]});
 markSeg();
 const GN={ludo:'🎲 Ludo',snl:'🐍 Snakes & Ladders',ally:'🤝 Secret Ally · needs 4 players',duel:'⚔️ Ludo Duel · 2 players'};
 const maxFor=()=>S.ogame=='ally'?4:S.ogame=='duel'?2:S.max;
 const needFor=g=>g=='ally'?4:2;
-function markFriends(){$('#maxseg').hidden=S.ogame=='ally'||S.ogame=='duel';markSeg()}
+const VMT={solo:'Everyone wins on their own. Make secret pacts in the game, two pairs can ally.',duo:'Fixed teams: Red + Yellow against Green + Blue. Both partners must finish to win together.'};
+function markFriends(){$('#maxseg').hidden=S.ogame=='ally'||S.ogame=='duel';$('#vmseg').hidden=S.ogame!='ally';markSeg();$('#vmhint').textContent=VMT[S.vmode]}
 $('[data-k=ogame]').addEventListener('click',markFriends);markFriends();
 function renderMe(){
   const u=mp.me(),m=$('#me');m.innerHTML='';
@@ -187,7 +188,7 @@ async function invite(p,b){
   try{
     b.disabled=true;
     let code=ctx.code,fresh=false;
-    if(!code){code=await mp.createRoom(maxFor(),myAv(),S.ogame);fresh=true}
+    if(!code){code=await mp.createRoom(maxFor(),myAv(),S.ogame);fresh=true;if(S.ogame=='ally')mp.setRoom(code,{vm:S.vmode}).catch(()=>{})}
     await mp.sendInvite(p.uid,code,mpName(),myAv());
     b.textContent='Invited ✓';
     if(fresh)watch(code);
@@ -355,7 +356,8 @@ function apply(i){
 // everybody still playing gets a place (most tokens home first), then the forfeits, last forfeit last
 function finishAll(){
   const home=x=>g.t.slice(x*4,x*4+4).reduce((a,t)=>a+Math.max(t,0),0);
-  const rest=g.P.map((_,x)=>x).filter(x=>!placed(x)).sort((a,b)=>home(b)-home(a));
+  const team=x=>g.vm=='duo'?home(x)+home((x+2)%4):0;
+  const rest=g.P.map((_,x)=>x).filter(x=>!placed(x)).sort((a,b)=>g.vm=='duo'?(team(b)-team(a))||((a%2)-(b%2))||(home(b)-home(a)):home(b)-home(a));
   g.dn=[];g.order=(g.order||[]).concat(rest,(g.forf||[]).slice().reverse());
   g.st='done';g.win=g.order[0];g.msg='';
 }
@@ -420,7 +422,7 @@ function botCheck(){
   ctx.bt=setTimeout(()=>{
     if(!g||!isBot()||ctx.hold)return;
     if(animCount>0)return botCheck();
-    if(g.st=='roll'){if(g.sa&&(botMaintain()||botShield()||botPropose()))return;return rollAnim(g.k=='snl'?sRoll:roll)}
+    if(g.st=='roll'){if(g.sa&&(botMaintain()||botShield()||botPropose()||botPair()))return;return rollAnim(g.k=='snl'?sRoll:roll)}
     if(g.st!='move')return;
     if(g.sa&&botAlly())return;
     {const k=g.turn;apply(botPick(k));if(g.sa&&/captured/.test(g.msg)&&Math.random()<.4)showRx(k,Math.random()<.5?'😈':'😂');sync()}
@@ -634,7 +636,7 @@ async function watch(code){
   ctx.unsubC=mp.watchChat(code,renderChat);
   $('#chatbtn').hidden=false;show('lobby');
 }
-$('#create').onclick=async()=>{try{say('ferr');watch(await mp.createRoom(maxFor(),myAv(),S.ogame))}catch(e){say('ferr',fe(e))}};
+$('#create').onclick=async()=>{try{say('ferr');const c=await mp.createRoom(maxFor(),myAv(),S.ogame);if(S.ogame=='ally')mp.setRoom(c,{vm:S.vmode}).catch(()=>{});watch(c)}catch(e){say('ferr',fe(e))}};
 async function joinCode(c){
   try{say('ferr');await mp.joinRoom(c,myAv());S.pending=null;history.replaceState(null,'',location.pathname);watch(c)}
   catch(e){S.pending=null;show('friends');say('ferr',fe(e))}
@@ -659,7 +661,7 @@ function onRoom(d,pending){
     const ul=$('#plist');ul.innerHTML='';
     d.players.forEach((p,k)=>{const li=document.createElement('li');li.textContent=(p.av||'🙂')+'  '+p.name;li.style.setProperty('--c',C[SEATS[Math.max(2,d.players.length)][k]||0]);ul.append(li)});
     const host=d.host==mp.me().uid,need=needFor(d.game);
-    $('#lgame').textContent=GN[d.game||'ludo'];
+    $('#lgame').textContent=GN[d.game||'ludo']+(d.game=='ally'?(d.vm=='duo'?' · 🤝 Duo Victory (Red+Yellow vs Green+Blue)':' · 🏁 Solo Victory'):'');
     $('#start').hidden=!(host&&d.players.length>=need);
     $('#lmsg').textContent=d.players.length+' of '+d.max+' joined'+(d.players.length<need?' · needs '+need+' to start':host?'':' · waiting for the host to start');
   }else{
@@ -689,7 +691,7 @@ $('#start').onclick=()=>{
   }
   if(game=='snl')g={k:'snl',P,...who,pos:P.map(()=>1),turn:0,roll:0,st:'roll',msg:'',idle:P.map(()=>0),forf:[],order:[]};
   else g={k:'ludo',P,...who,t:Array(P.length*4).fill(-1),turn:0,roll:0,st:'roll',msg:'',idle:P.map(()=>0),forf:[],order:[]};
-  if(game=='ally'){g.sa=1;g.gid=Date.now();g.gfrom=null;g.dn=[];g.sh=P.map(()=>({s:'a'}));injectAlly()}
+  if(game=='ally'){g.sa=1;g.vm=S.vmode=='duo'?'duo':'solo';g.gid=Date.now();g.gfrom=null;g.dn=[];g.sh=P.map(()=>({s:'a'}));injectAlly()}
   const pub={...g};delete pub.al;delete pub.cd;delete pub.cr;delete pub.pm;
   ctx.playing=1;
   mp.setRoom(ctx.code,{status:'playing',g:pub}).catch(e=>alert(fe(e)));
@@ -748,7 +750,8 @@ function showResult(){
   const items=[];
   for(let i=0;i<ord.length;i++){
     const k=ord[i];
-    if(g.duo&&k==g.duo[0]&&ord[i+1]==g.duo[1]){items.push({ks:[k,ord[i+1]],duo:1});i++}
+    const fo2=x=>(g.forf||[]).includes(x);
+    if((g.duo&&k==g.duo[0]&&ord[i+1]==g.duo[1])||(g.vm=='duo'&&g.k=='ludo'&&ord[i+1]==(k+2)%4&&!fo2(k)&&!fo2(ord[i+1]))){items.push({ks:[k,ord[i+1]],duo:1});i++}
     else items.push({ks:[k]});
   }
   const list=$('#rlist');list.innerHTML='';
@@ -890,16 +893,23 @@ const duoFirst=()=>!!(g.duo&&g.order&&g.order[0]==g.duo[0]&&g.order[1]==g.duo[1]
 const termsText=t=>(t.m=='t'?'⏳ Temporary · '+t.d+' turns':'♾ Continuous')+' · '+(t.vm=='duo'?'🤝 Duo Victory':'🏁 Solo Victory');
 $('#aplay').onclick=()=>{
   const P=SEATS[4],bot=S.amode=='bot';ctx={mode:S.amode};
-  g={k:'ludo',sa:1,gid:Date.now(),P,names:P.map((p,k)=>bot?(k?'Computer '+(k+1):'You'):N[p]),t:Array(16).fill(-1),turn:0,roll:0,st:'roll',msg:'',
+  g={k:'ludo',sa:1,gid:Date.now(),P,names:P.map((p,k)=>bot?(k?'Computer '+(k+1):'You'):N[p]),t:Array(16).fill(-1),turn:0,roll:0,st:'roll',msg:'',vm:S.vmode=='duo'?'duo':'solo',
      al:[-1,-1,-1,-1],cd:[0,0,0,0],cr:[0,0,0,0],pm:[null,null,null,null],gfrom:null,idle:[0,0,0,0],forf:[],order:[],dn:[],
      sh:[0,1,2,3].map(()=>({s:'a'}))};
   g.avs=P.map((p,k)=>bot?(k?AVS.filter(a=>a!=myAv())[(k*5+3)%15]:myAv()):AVS[p*4]);
   // the computers sometimes team up between themselves, in secret
-  if(bot&&Math.random()<.65){const b=[1,2,3].sort(()=>Math.random()-.5);pact(b[0],b[1],botTerms())}
+  if(g.vm=='duo')duoTeams(g);
+  else if(bot&&Math.random()<.65){const b=[1,2,3].sort(()=>Math.random()-.5);pact(b[0],b[1],botTerms())}
   enter();
-  setTimeout(()=>{if(g&&g.sa)toast('Tip: tap 🤝 Ask for ally before you roll. 🛡 Shield protects one token for a turn.')},700);
+  setTimeout(()=>{if(g&&g.sa)toast(g.vm=='duo'?'🤝 Teams: Red + Yellow against Green + Blue. 🛡 Shield protects one token for a turn.':'Tip: tap 🤝 Ask for ally before you roll. 🛡 Shield protects one token for a turn.')},700);
 };
-const botTerms=()=>({m:Math.random()<.5?'t':'c',vm:Math.random()<.5?'duo':'solo',d:ALLY_CFG.defTurns});
+const botTerms=()=>({m:Math.random()<.5?'t':'c',vm:'solo',d:ALLY_CFG.defTurns});
+// Duo Victory: fixed teams on opposite corners (Red+Yellow, Green+Blue), set up for everybody and never broken
+function duoTeams(o){
+  const pr=[[0,2],[1,3]];
+  pr.forEach(([a,b])=>{const pm={m:'c',vm:'duo',d:0,exp:0,rn:{},fixed:1};o.al[a]=b;o.al[b]=a;o.pm[a]=o.pm[b]=pm});
+}
+const isDuo=()=>!!(g&&g.vm=='duo');
 let toastT=0;
 function toast(m){const t=$('#atoast');if(!t)return;t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true},3800)}
 const myIdx=()=>g.uids.indexOf((mp.me()||{}).uid);
@@ -987,7 +997,7 @@ function gift(){
   g.msg=nm(j)+' uses a gifted '+r;
   if(ctx.mode=='bot'&&m.length==1){apply(m[0]);return sync()}
   g.st='move';
-  if(ctx.mode=='pass'){
+  if(ctx.mode=='pass'&&!isDuo()){
     ctx.hold=1;sync();
     cover(nm(j),'Your secret ally gave you a '+r+'. You must use it.',()=>{ctx.hold=0;top()});
   }else sync();
@@ -1040,7 +1050,7 @@ function endangered(j,i){
 
 /* ----- asking for an ally ----- */
 function reqAlly(t){
-  if(!g||!g.sa||g.st=='done'||ctx.hold)return;
+  if(!g||!g.sa||g.st=='done'||ctx.hold||isDuo())return;
   const k=g.turn;
   if(t===k)return;
   if(ctx.mode=='bot'&&k!==0)return;
@@ -1056,7 +1066,7 @@ function reqAlly(t){
 let rq=null;
 function openAreq(k,t){
   ctx.hold=1;clearTimer();
-  rq={m:'t',d:ALLY_CFG.defTurns,vm:'duo'};
+  rq={m:'t',d:ALLY_CFG.defTurns,vm:'solo'};
   $('#areqt').textContent='Ask '+nm(t)+' to team up in secret. Allies never cut each other.';
   const paint=()=>{
     $$('#areq .sg').forEach(sg=>[...sg.children].forEach(b=>b.classList.toggle('on',String(rq[sg.dataset.k])==b.dataset.v)));
@@ -1109,11 +1119,19 @@ function sendReq(k,t,terms){
 // a computer sometimes asks you
 function botPropose(){
   const k=g.turn;
-  if(ctx.mode!='bot'||g.al[k]>=0||g.cd[k]>0||g.al[0]>=0||g.cd[0]>0||out(0)||out(k)||(g.rc||0)<4||Math.random()>.12)return false;
+  if(isDuo()||ctx.mode!='bot'||g.al[k]>=0||g.cd[k]>0||g.al[0]>=0||g.cd[0]>0||out(0)||out(k)||(g.rc||0)<4||Math.random()>.12)return false;
   ctx.hold=1;const terms=botTerms();
   askAB('🤝 '+nm(k)+' sends you a Secret Alliance Request',termsText(terms),'Accept','Decline',
     ()=>{pact(k,0,terms);ctx.hold=0;toast('🤝 Secret pact formed with '+nm(k));sync();sfx.start()},()=>{ctx.hold=0;sync()});
   return true;
+}
+// in Solo Victory the computers also team up with each other, in secret
+function botPair(){
+  const k=g.turn;
+  if(isDuo()||ctx.mode!='bot'||k==0||g.al[k]>=0||g.cd[k]>0||(g.rc||0)<4||Math.random()>.07)return false;
+  const c=[1,2,3].filter(t=>t!=k&&!out(t)&&g.al[t]<0&&g.cd[t]==0);
+  if(c.length)pact(k,c[Math.random()*c.length|0],botTerms());
+  return false;
 }
 // computers renew their own pacts, most of the time
 function botMaintain(){
@@ -1129,7 +1147,7 @@ function botMaintain(){
 function botAlly(){
   const k=g.turn,j=g.al[k],r=g.roll;
   if(j<0||g.gfrom!=null)return false;
-  if(g.cr[k]>0){
+  if(g.cr[k]>0&&!isDuo()){
     const c=movable(k,r).filter(i=>cutsAlly(k,i));
     if(c.length&&Math.random()<.5){betrayWith(c[0]);sync();return true}
   }
@@ -1154,11 +1172,12 @@ function allyUI(){
   g.P.forEach((c,k)=>{
     const card=cards[c];if(!card)return;
     const b=card.querySelector('.abadge'),inf=card.querySelector('.ainfo'),sh=g.sh[k];
-    const mine=pv>=0&&(k==v||k==pv);
-    if(b){b.hidden=!mine;if(mine)b.title='Secret ally'}
+    const mine=isDuo()?g.al[k]>=0:pv>=0&&(k==v||k==pv);
+    if(b){b.hidden=!mine;if(mine)b.title=isDuo()?'Team mate':'Secret ally'}
     if(inf){
       let tx='';
-      if(mine&&pmv){
+      if(isDuo()){const j=g.al[k];if(j>=0)tx=(g.dn||[]).includes(k)?'✔ Home · waiting':'🤝 Duo team'}
+      else if(mine&&pmv){
         tx=(pmv.vm=='duo'?'🤝 Duo':'🏁 Solo')+' · '+(pmv.m=='t'?'⏳ '+Math.max(0,pmv.exp-(g.rc||0))+' turns':'♾ ∞');
         if((g.dn||[]).includes(k))tx='✔ Home · waiting for ally';
       }
@@ -1182,6 +1201,7 @@ function allyUI(){
   const shield=()=>{if(canShield(k))add('🛡 Shield',()=>{ctx.shp=1;ctx.picking=0;mark();allyUI()})};
   // before the roll: ask somebody to be your secret ally, renew or end your pact, raise the shield
   if(g.st=='roll'){
+    if(isDuo())return shield();
     if(g.al[k]>=0){
       const pm=g.pm[k];
       if(pm&&pm.m=='t'&&pm.exp-(g.rc||0)<=ALLY_CFG.renewAt){
@@ -1208,7 +1228,7 @@ function allyUI(){
       if(!out(j)&&movable(j,r).length)add('🎁 Give this '+r+' to ally',()=>{human();gift()});
       else add('🎁 Ally cannot use a '+r,null,true);
     }
-    if(g.cr[k]>0&&movable(k,r).some(i=>cutsAlly(k,i)))
+    if(!isDuo()&&g.cr[k]>0&&movable(k,r).some(i=>cutsAlly(k,i)))
       add(ctx.betray?'✖ Cancel':'💔 Break Alliance & Cut',()=>{ctx.betray=ctx.betray?0:1;mark();allyUI();if(ctx.betray)toast('Tap the glowing token to cut your ally')});
   }
   if(!ctx.betray)shield();
@@ -1244,7 +1264,7 @@ function takeRx(d){
 
 /* ----- Secret Ally online: each player keeps their own pact in a private document ----- */
 function injectAlly(){
-  if(!ctx.al){ctx.al=[-1,-1,-1,-1];ctx.cd=[0,0,0,0];ctx.cr=[0,0,0,0];ctx.pm=[null,null,null,null]}
+  if(!ctx.al){ctx.al=[-1,-1,-1,-1];ctx.cd=[0,0,0,0];ctx.cr=[0,0,0,0];ctx.pm=[null,null,null,null];if(g.vm=='duo')duoTeams(ctx)}
   g.al=ctx.al;g.cd=ctx.cd;g.cr=ctx.cr;g.pm=ctx.pm;
 }
 function startAllyOnline(){
@@ -1252,7 +1272,7 @@ function startAllyOnline(){
 }
 const pmDoc=pm=>pm?{m:pm.m,vm:pm.vm,d:pm.d,exp:pm.exp}:null;
 function persistAlly(){
-  if(ctx.mode!='online'||!g||!g.sa||!ctx.al||!ctx.alInit)return;
+  if(ctx.mode!='online'||!g||!g.sa||g.vm=='duo'||!ctx.al||!ctx.alInit)return;
   const me=myIdx();if(me<0)return;
   const j=ctx.al[me],pm=ctx.pm[me],key=j+'|'+ctx.cd[me]+'|'+ctx.cr[me]+'|'+(pm?pm.exp+pm.m+pm.vm:'');
   if(ctx.akey===key)return;
@@ -1263,7 +1283,7 @@ function persistAlly(){
   if(j>=0&&was!==j)mp.setAlly(ctx.code,g.uids[j],{gid:g.gid,pact:uid,pm:pmDoc(pm),cr:0}).catch(()=>{});
 }
 function onAlly(d,pending){
-  if(!g||!g.sa||ctx.mode!='online'||pending)return;
+  if(!g||!g.sa||g.vm=='duo'||ctx.mode!='online'||pending)return;
   const me=myIdx();if(me<0)return;
   if(!ctx.alInit){
     ctx.alInit=1;

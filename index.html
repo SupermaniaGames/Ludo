@@ -57,6 +57,7 @@
 <section class="sc" id="friends" hidden>
  <h2>Play with friends</h2>
  <div class="seg wrap" data-k="ogame"><button data-v="ludo">🎲 Ludo</button><button data-v="snl">🐍 Snakes &amp; Ladders</button><button data-v="ally">🤝 Secret Ally</button><button data-v="duel">⚔️ Ludo Duel</button></div>
+ <div class="seg" id="vmseg" data-k="vmode" hidden><button data-v="solo">🏁 Solo Victory</button><button data-v="duo">🤝 Duo Victory</button></div>
  <div class="seg" id="maxseg" data-k="max"><button data-v="2">2 players</button><button data-v="3">3</button><button data-v="4">4</button></div>
  <button class="btn p" id="create">Create room</button>
  <p>or enter a room code</p>
@@ -88,9 +89,12 @@
  <h2>🤝 Ludo: Secret Ally</h2>
  <p class="hint">4-player Ludo with secret pacts</p>
  <div class="seg" data-k="amode"><button data-v="bot">Computer</button><button data-v="pass">Pass N Play</button></div>
+ <h3>🏆 How do you win?</h3>
+ <div class="seg" data-k="vmode"><button data-v="solo">🏁 Solo Victory</button><button data-v="duo">🤝 Duo Victory</button></div>
+ <p class="hint" id="vmhint"></p>
  <ul class="drules">
-  <li>🤝 <b>Ask for an ally:</b> before you roll, tap 🤝 Ask for ally (or a player's name). Choose how the pact works: <b>⏳ Temporary</b> (counts down, both must agree to renew) or <b>♾ Continuous</b>. The other player must accept, or the request runs out.</li>
-  <li>🏁 <b>Victory:</b> <b>Duo</b> means you both bring all tokens home to win together. <b>Solo</b> means you each win on your own. Allies never cut each other, anyone else still can.</li>
+  <li>🤝 <b>Ask for an ally:</b> before you roll, tap 🤝 Ask for ally (or a player's name). Choose how the pact works: <b>⏳ Temporary</b> (counts down, both must agree to renew) or <b>♾ Continuous</b>. The other player must accept, or the request runs out. Two pairs can ally at the same time.</li>
+  <li>🏁 <b>Solo Victory:</b> you make secret pacts yourself and everyone wins on their own. 🤝 <b>Duo Victory:</b> teams are fixed, <b>Red + Yellow</b> against <b>Green + Blue</b> (opposite corners). Both partners must bring all tokens home to win together. Allies never cut each other, anyone else still can.</li>
   <li>🛡 <b>Shield:</b> once per game, protect one token from being cut during the next player's turn. Raise it on your own turn.</li>
   <li>⚠ <b>Danger:</b> a red mark shows your token can be cut by one roll.</li>
   <li>🎁 <b>Gift</b> a roll to your ally, who must use it. 💔 <b>Break &amp; Cut</b> after your pact has cut an opponent.</li>
@@ -153,8 +157,6 @@
   <div class="lbl">Alliance</div>
   <div class="sg" data-k="m"><button data-v="t">⏳ Temporary</button><button data-v="c">♾ Continuous</button></div>
   <div id="areq-d"><div class="lbl">Lasts</div><div class="sg" data-k="d"><button data-v="12">12 turns</button><button data-v="20">20 turns</button><button data-v="32">32 turns</button></div></div>
-  <div class="lbl">Victory</div>
-  <div class="sg" data-k="vm"><button data-v="duo">🤝 Duo Victory</button><button data-v="solo">🏁 Solo Victory</button></div>
   <div class="rbtns"><button class="btn" id="areqx">Cancel</button><button class="btn p" id="areqs">Send request</button></div>
  </div></div>
 <div id="cover" hidden><div class="rbox"><div class="rtitle" id="cvt"></div><p id="cvs"></p><button class="btn p" id="cvb"></button></div></div>
