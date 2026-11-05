@@ -321,3 +321,5 @@ body:has(#game:not([hidden])){padding-left:6px;padding-right:6px}
 #areq .sg button{font-size:1.05rem;min-height:48px}
 #areq .btn{font-size:1.15rem;min-height:52px}
 @media (max-height:660px){#game.solo.sa #solo #aact .btn{font-size:.8rem;padding:5px 7px;min-height:36px}#aact .btn{font-size:.95rem;padding:8px 12px;min-height:40px}}
+
+.tok.go{z-index:6!important}

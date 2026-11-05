@@ -308,10 +308,11 @@ const human=()=>{if(g&&g.idle)g.idle[g.turn]=0};
 // fair dice: never a third 6 in a row, and nobody waits forever for a 6 to leave home
 function dice(){
   const k=g.turn;g.ns=g.ns||[0,0,0,0];
-  let r=1+Math.random()*6|0;
   const allHome=[0,1,2,3].every(x=>g.t[k*4+x]<0);
+  // 6s are made a little more common: all tokens at home = 1 in 3, otherwise about 1 in 4.5
+  let r=Math.random()<(allHome?.34:.22)?6:1+Math.random()*5|0;
   if((g.sixes||0)>=2&&r==6)r=1+Math.random()*5|0;
-  else if(r!=6&&(g.ns[k]||0)>=(allHome?5:12)&&(g.sixes||0)<2)r=6;
+  else if(r!=6&&(g.ns[k]||0)>=(allHome?2:7)&&(g.sixes||0)<2)r=6;
   g.ns[k]=r==6?0:(g.ns[k]||0)+1;
   return r;
 }
@@ -350,7 +351,9 @@ function apply(i){
     if(left.length<=1){finishAll();return}
     g.msg=nm(k)+' finished in place '+g.order.length+'!'+(ended?' · 🤝 only allies are left: the pact is over, play for yourself!':'');g.turn=nxt(base);g.st='roll';return;
   }
-  if(!(r==6||h.length||n==56)){g.turn=nxt(base);g.sixes=0}
+  const bonus=r==6||h.length||n==56;
+  if(base!=k){g.turn=bonus&&!out(base)?base:nxt(base);g.sixes=0}   // a gifted move never gives the ally another roll: the turn goes back to whoever gifted it
+  else if(!bonus){g.turn=nxt(base);g.sixes=0}
   g.st='roll';
 }
 // everybody still playing gets a place (most tokens home first), then the forfeits, last forfeit last
@@ -486,6 +489,7 @@ function layout(){
     const e=els[o.n],off=a.length>1?(i-(a.length-1)/2)*.34:0;
     e.style.left=(o.x+off)/15*100+'%';e.style.top=o.y/15*100+'%';
     e.style.setProperty('--s',a.length>1?.8:1);
+    e.style.zIndex=(o.n>>2)==g.turn&&g.st!='done'?4:2;   // the tokens of whoever is playing sit on top of a shared square
   }));
 }
 // pieces walk one square at a time, with a tick for every step
@@ -526,7 +530,7 @@ function draw(){
 function top(){
   const st=$('#status'),k=g.turn,p=g.P[k];
   let t;
-  if(g.st=='done')t=duoFirst()?'🤝 Duo Victory: '+nm(g.duo[0])+' & '+nm(g.duo[1])+'!':nm(g.win)+' wins! 🏆';
+  if(g.st=='done')t=duoFirst()?'🤝 '+teamName(g.duo[0],g.duo[1])+' win the Duo Victory!':nm(g.win)+' wins! 🏆';
   else if(g.st=='move')t=nm(k)+' rolled '+g.roll+': tap a token';
   else if(g.st=='busy')t=g.msg;
   else t=(g.msg?g.msg+' · ':'')+nm(k)+"'s turn";
@@ -761,7 +765,7 @@ function showResult(){
     const ic=document.createElement('span');ic.className='ric';
     if(last)ic.textContent='👎';else{ic.textContent='👑';const b=document.createElement('b');b.textContent=i+1;ic.append(b)}
     const av=document.createElement('span');av.className='rav';av.textContent=it.duo?'🤝':(g.avs&&g.avs[k])||'🙂';
-    const nmEl=document.createElement('span');nmEl.className='nm';nmEl.textContent=it.ks.map(nm).join(' & ');
+    const nmEl=document.createElement('span');nmEl.className='nm';nmEl.textContent=it.duo?teamName(it.ks[0],it.ks[1])+' ('+it.ks.map(nm).join(' & ')+')':it.ks.map(nm).join(' & ');
     const tag=document.createElement('span');tag.textContent=fo?'Forfeited':it.duo?(i==0?'Duo Victory':'Duo · #'+(i+1)):i==0?'Winner':last?'Loser':'#'+(i+1);
     row.append(ic,av,nmEl,tag);list.append(row);
   });
@@ -874,7 +878,7 @@ function forfeit(k){
     if(g.k=='ludo'){if(left.length)g.order=(g.order||[]).concat(left[0]);g.order=(g.order||[]).concat(g.forf.slice().reverse());g.win=g.order[0]}
     else g.win=left.length?left[0]:g.win;
     g.st='done';
-  }else if(g.turn==k){g.turn=nxt(k);g.st='roll';g.sixes=0}
+  }else if(g.turn==k){const b=g.gfrom!=null?g.gfrom:k;g.gfrom=null;g.turn=nxt(b);g.st='roll';g.sixes=0}
   sync();
 }
 
@@ -901,9 +905,17 @@ $('#aplay').onclick=()=>{
   if(g.vm=='duo')duoTeams(g);
   else if(bot&&Math.random()<.65){const b=[1,2,3].sort(()=>Math.random()-.5);pact(b[0],b[1],botTerms())}
   enter();
-  setTimeout(()=>{if(g&&g.sa)toast(g.vm=='duo'?'🤝 Teams: Red + Yellow against Green + Blue. 🛡 Shield protects one token for a turn.':'Tip: tap 🤝 Ask for ally before you roll. 🛡 Shield protects one token for a turn.')},700);
+  setTimeout(()=>{if(g&&g.sa)toast(g.vm=='duo'?'🤝 '+teamName(0,2)+' (Red + Yellow) vs '+teamName(1,3)+' (Green + Blue)':'Tip: tap 🤝 Ask for ally before you roll. 🛡 Shield protects one token for a turn.')},700);
 };
 const botTerms=()=>({m:Math.random()<.5?'t':'c',vm:'solo',d:ALLY_CFG.defTurns});
+// every team gets a random name (the same on every phone: it comes from the game id)
+const TN=['Thunder Twins','Royal Rockets','Dragon Duo','Ninja Knights','Fire Foxes','Storm Riders','Tiger Titans','Cosmic Crew','Lightning Lions','Shadow Hawks','Mighty Mambas','Golden Eagles'];
+const hsh=s=>{let h=7;for(const c of String(s))h=(h*31+c.charCodeAt(0))>>>0;return h};
+function teamName(a,b){
+  const lo=Math.min(a,b),hi=Math.max(a,b),id=(g&&g.gid)||0;
+  if(g&&g.vm=='duo'){const i=hsh(id)%TN.length,j=(i+1+hsh(id+'x')%(TN.length-1))%TN.length;return TN[lo==0?i:j]}
+  return TN[(hsh(id)+lo*5+hi*11)%TN.length];
+}
 // Duo Victory: fixed teams on opposite corners (Red+Yellow, Green+Blue), set up for everybody and never broken
 function duoTeams(o){
   const pr=[[0,2],[1,3]];
@@ -1122,7 +1134,7 @@ function botPropose(){
   if(isDuo()||ctx.mode!='bot'||g.al[k]>=0||g.cd[k]>0||g.al[0]>=0||g.cd[0]>0||out(0)||out(k)||(g.rc||0)<4||Math.random()>.12)return false;
   ctx.hold=1;const terms=botTerms();
   askAB('🤝 '+nm(k)+' sends you a Secret Alliance Request',termsText(terms),'Accept','Decline',
-    ()=>{pact(k,0,terms);ctx.hold=0;toast('🤝 Secret pact formed with '+nm(k));sync();sfx.start()},()=>{ctx.hold=0;sync()});
+    ()=>{pact(k,0,terms);ctx.hold=0;toast('🤝 Secret pact formed with '+nm(k)+' · team '+teamName(k,0));sync();sfx.start()},()=>{ctx.hold=0;sync()});
   return true;
 }
 // in Solo Victory the computers also team up with each other, in secret
@@ -1176,9 +1188,9 @@ function allyUI(){
     if(b){b.hidden=!mine;if(mine)b.title=isDuo()?'Team mate':'Secret ally'}
     if(inf){
       let tx='';
-      if(isDuo()){const j=g.al[k];if(j>=0)tx=(g.dn||[]).includes(k)?'✔ Home · waiting':'🤝 Duo team'}
+      if(isDuo()){const j=g.al[k];if(j>=0)tx=(g.dn||[]).includes(k)?'✔ Home · waiting':'🤝 '+teamName(k,j)}
       else if(mine&&pmv){
-        tx=(pmv.vm=='duo'?'🤝 Duo':'🏁 Solo')+' · '+(pmv.m=='t'?'⏳ '+Math.max(0,pmv.exp-(g.rc||0))+' turns':'♾ ∞');
+        tx='🤝 '+teamName(k,g.al[k])+' · '+(pmv.m=='t'?'⏳'+Math.max(0,pmv.exp-(g.rc||0)):'♾');
         if((g.dn||[]).includes(k))tx='✔ Home · waiting for ally';
       }
       inf.textContent=tx;
@@ -1302,7 +1314,7 @@ function onAlly(d,pending){
       const pm={...d.pm,rn:{}};
       ctx.al[me]=j;ctx.al[j]=me;ctx.pm[me]=ctx.pm[j]=pm;ctx.cr[me]=d.cr||0;
       if(ctx.preq){clearTimeout(ctx.preqT);ctx.preq=null}
-      if(ctx.alInit>1)toast('🤝 Secret pact formed: '+termsText(pm));
+      if(ctx.alInit>1)toast('🤝 Team '+teamName(me,g.al[me])+' formed: '+termsText(pm));
       sfx.start();
     }else if(was>=0&&ctx.alInit>1)toast('💔 Your alliance has ended');
     ctx.apart=j;ctx.akey=j+'|'+ctx.cd[me]+'|'+ctx.cr[me]+'|'+(ctx.pm[me]?ctx.pm[me].exp+ctx.pm[me].m+ctx.pm[me].vm:'');
@@ -1332,6 +1344,6 @@ function showAllyReq(req){
   ctx.curReq=req.ts;
   const terms={m:req.m,vm:req.vm,d:req.d};
   askAB('🤝 '+nm(from)+' sends you a Secret Alliance Request',termsText(terms)+'. Both of you must agree. It runs out in '+Math.ceil(left/1000)+'s.','Accept','Decline',
-    ()=>{clearTimeout(timer);ctx.curReq=0;pact(me,from,terms);persistAlly();reply(true);toast('🤝 Secret pact formed: '+termsText(terms));sfx.start();top()},
+    ()=>{clearTimeout(timer);ctx.curReq=0;pact(me,from,terms);persistAlly();reply(true);toast('🤝 Team '+teamName(me,from)+' formed: '+termsText(terms));sfx.start();top()},
     ()=>{clearTimeout(timer);ctx.curReq=0;if(ctx.expiredReq){ctx.expiredReq=0;mp.setAlly(ctx.code,g.uids[me],{req:null}).catch(()=>{});return}reply(false)});
 }
